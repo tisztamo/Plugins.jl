@@ -2,7 +2,7 @@ using Plugins
 using Test
 
 struct Framework{TPlugin}
-    firstplugin::TPlugin
+    plugins::TPlugin
 end
 
 struct EmptyPlugin{Next} <: Plugin
@@ -72,6 +72,7 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
         counter = CounterPlugin(innerplugins)
         a1 = Framework(counter)
         a1_hook1s = hooks(a1, hook1_handler)
+        @test length(a1_hook1s) === 1
         for i=1:1e5 a1_hook1s() end
         @time for i=1:1e5 a1_hook1s() end
         hooks(a1, hook2_handler)()
@@ -82,8 +83,9 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
     @testset "Same plugin twice" begin
         innercounter = CounterPlugin(TerminalPlugin())
         outercounter = CounterPlugin(innercounter)
-        @show a2 = Framework(outercounter)
-        @show a2_hook1s = hooks(a2, hook1_handler)
+        a2 = Framework(outercounter)
+        a2_hook1s = hooks(a2, hook1_handler)
+        @test length(a2_hook1s) === 2
         for i=1:1e5 a2_hook1s() end
         @time for i=1:1e5 a2_hook1s() end
         hooks(a2, hook2_handler)()
@@ -110,15 +112,15 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
     @testset "Framework goes through" begin
         frameworktestapp = Framework(EmptyPlugin(FrameworkTestPlugin(TerminalPlugin())))
         hooks(frameworktestapp, hook1_handler)()
-        @test frameworktestapp.firstplugin.next.calledwithframework === frameworktestapp
+        @test frameworktestapp.plugins.next.calledwithframework === frameworktestapp
     end
 
     @testset "Event object" begin
         eventtestapp = Framework(EmptyPlugin(EventTestPlugin(TerminalPlugin())))
         event = (name="test event", data=42)
         hooks(eventtestapp, event_handler)(event)
-        @test eventtestapp.firstplugin.next.calledwithframework === eventtestapp
-        @test eventtestapp.firstplugin.next.calledwithevent === event
+        @test eventtestapp.plugins.next.calledwithframework === eventtestapp
+        @test eventtestapp.plugins.next.calledwithevent === event
     end
 
     @testset "Multiple apps with same chain, differently configured" begin
@@ -138,5 +140,18 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
         hooks(spapp, propagationtest)(42) # It is stopped so the checker does not throw
         hooks(spapp, propagationtest)(32) # Not stopped but accepted by the checker
         @test_throws String hooks(spapp, propagationtest)(41)
+    end
+
+    @testset "HookList iteration" begin
+        c1 = CounterPlugin(EmptyPlugin(TerminalPlugin()))
+        c2 = CounterPlugin(c1)
+        hookers = [c2, c1]
+        iapp = Framework(EmptyPlugin(c2))
+        @test length(hooks(iapp, hook1_handler)) === 2
+        i = 1
+        for hook in hooks(iapp, hook1_handler)
+            @test hookers[i] === hook.plugin
+            i += 1
+        end
     end
 end

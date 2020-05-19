@@ -1,5 +1,7 @@
 module Plugins
 
+import Base.length, Base.iterate
+
 export Plugin, TerminalPlugin, hooks
 
 abstract type Plugin end
@@ -31,8 +33,16 @@ end
     return nothing
 end
 
-(hook::HookList{Nothing, T, Nothing})() where T = nothing
-(hook::HookList{Nothing, T, Nothing})(a) where T = nothing
+(hook::HookList{Nothing, T, Nothing, Nothing})() where T = nothing
+(hook::HookList{Nothing, T, Nothing, Nothing})(a) where T = nothing
+
+length(l::HookList{Nothing, T, Nothing, Nothing}) where T = 0
+length(l::HookList) = 1 + length(l.next)
+
+iterate(l::HookList) = (l, l.next)
+iterate(l::HookList, state) = isnothing(state) ? nothing : (state, state.next)
+iterate(l::HookList{Nothing, T, Nothing, Nothing}) where T = nothing
+iterate(l::HookList, state::HookList{Nothing, T, Nothing, Nothing}) where T = nothing
 
 function hooks(plugin::TPlugin, handler::THandler, framework::TFramework,) where {TFramework, THandler, TPlugin}
     if length(methods(handler, (TPlugin, TFramework))) > 0 || length(methods(handler, (TPlugin, TFramework, Any))) > 0
@@ -42,6 +52,6 @@ function hooks(plugin::TPlugin, handler::THandler, framework::TFramework,) where
 end
 hooks(plugin::Nothing, handler, framework) = HookList(nothing, (p, f) -> nothing, nothing, nothing)
 
-hooks(framework::TFramework, handler::THandler) where {THandler, TFramework} = hooks(framework.firstplugin, handler, framework)
+hooks(framework::TFramework, handler::THandler) where {THandler, TFramework} = hooks(framework.plugins, handler, framework)
 
 end # module
