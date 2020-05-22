@@ -1,16 +1,23 @@
 module Plugins
 
-import Base.length, Base.iterate
+import Base.length, Base.iterate, Base.get, Base.getindex
 
-export Plugin, TerminalPlugin, hooks
+export PluginStack, Plugin, hooks, symbol, setup!, shutdown!
 
 abstract type Plugin end
-next(plugin) = plugin.next
 
-struct TerminalPlugin <: Plugin
-    next::Nothing
-    TerminalPlugin() = new(nothing)
+symbol(plugin::Plugin) = :nothing
+setup!(plugin::Plugin, scheduler) = nothing
+shutdown!(plugin::Plugin) = nothing
+
+struct PluginStack
+    plugins::Array{Plugin}
+    cache::Dict{Symbol, Plugin}
+    PluginStack(plugins) = new(plugins, Dict([(symbol(plugin), plugin) for plugin in plugins]))
 end
+
+Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.cache, key, default)
+Base.getindex(stack::PluginStack, idx) = getindex(stack.plugins, idx)
 
 struct HookList{TNext, THandler, TPlugin, TFramework}
     next::TNext
@@ -19,39 +26,57 @@ struct HookList{TNext, THandler, TPlugin, TFramework}
     framework::TFramework
 end
 
-@inline function (hook::HookList)()
+@inline function (hook::HookList)()::Bool
     if hook.handler(hook.plugin, hook.framework) !== false
-        hook.next()
+        return hook.next()
     end
-    return nothing
+    return true
 end
 
-@inline function (hook::HookList)(event)
+@inline function (hook::HookList)(event)::Bool
     if hook.handler(hook.plugin, hook.framework, event) !== false
-        hook.next(event)
+        return hook.next(event)
     end
-    return nothing
+    return false
 end
 
-(hook::HookList{Nothing, T, Nothing, Nothing})() where T = nothing
-(hook::HookList{Nothing, T, Nothing, Nothing})(a) where T = nothing
+(hook::HookList{Nothing, T, Nothing, Nothing})() where T = true
+(hook::HookList{Nothing, T, Nothing, Nothing})(a) where T = true
 
 length(l::HookList{Nothing, T, Nothing, Nothing}) where T = 0
 length(l::HookList) = 1 + length(l.next)
 
 iterate(l::HookList) = (l, l.next)
 iterate(l::HookList, state) = isnothing(state) ? nothing : (state, state.next)
-iterate(l::HookList{Nothing, T, Nothing, Nothing}) where T = nothing
 iterate(l::HookList, state::HookList{Nothing, T, Nothing, Nothing}) where T = nothing
 
-function hooks(plugin::TPlugin, handler::THandler, framework::TFramework,) where {TFramework, THandler, TPlugin}
-    if length(methods(handler, (TPlugin, TFramework))) > 0 || length(methods(handler, (TPlugin, TFramework, Any))) > 0
-        return HookList(hooks(next(plugin), handler, framework), handler, plugin, framework)
+function hooks(plugins::Array{TPlugins}, handler::THandler, framework::TFramework) where {TFramework, THandler, TPlugins}
+    if length(plugins) == 0
+        return HookList(nothing, nothing, nothing, nothing)
     end
-    return hooks(next(plugin), handler, framework)
+    plugin = plugins[1]
+    if length(methods(handler, (typeof(plugin), TFramework))) > 0 || length(methods(handler, (typeof(plugin), TFramework, Any))) > 0
+        return HookList(hooks(plugins[2:end], handler, framework), handler, plugin, framework)
+    end
+    return hooks(plugins[2:end], handler, framework)
 end
 hooks(plugin::Nothing, handler, framework) = HookList(nothing, (p, f) -> nothing, nothing, nothing)
-
 hooks(framework::TFramework, handler::THandler) where {THandler, TFramework} = hooks(framework.plugins, handler, framework)
+hooks(stack::PluginStack, handler::THandler, framework::TFramework) where {TFramework, THandler} = hooks(stack.plugins, handler, framework)
+
+function setup!(stack::PluginStack, framework)
+    allok = true
+    results = []
+    for plugin in stack.plugins
+        try
+            push!(results, setup!(plugin, framework))
+        catch e
+            allok = false
+            push!(results, e)
+        end
+    end
+    return (allok = allok, results = results)
+end
+shutdown!(plugins::Plugins) = shutdown!.(values(plugins.plugins))
 
 end # module

@@ -1,77 +1,78 @@
 using Plugins
+import Plugins.symbol
 using Test
 
-struct Framework{TPlugin}
-    plugins::TPlugin
+struct Framework
+    plugins
+    Framework(plugins) = new(PluginStack(plugins))
 end
 
-struct EmptyPlugin{Next} <: Plugin
-    next::Next
-    EmptyPlugin(next::Next) where Next = new{Next}(next)
+struct EmptyPlugin <: Plugin
 end
 
-mutable struct CounterPlugin{Next} <: Plugin
-    next::Next
+mutable struct CounterPlugin <: Plugin
     hook1count::Int
     hook2count::Int
-    CounterPlugin(next::Next) where Next = new{Next}(next, 0, 0)
+    CounterPlugin() = new(0, 0)
 end
-@inline hook1_handler(plugin::CounterPlugin{Next}, framework) where Next = plugin.hook1count += 1
-@inline hook2_handler(plugin::CounterPlugin{Next}, framework) where Next = plugin.hook2count += 1
-
-function chain_of_empties(terminal, length=10)
-    inner = terminal
-    for i = 1:length
-        inner = EmptyPlugin(inner)
-    end
-    return inner
+symbol(::CounterPlugin) = :counter
+@inline hook1_handler(plugin::CounterPlugin, framework) = begin
+    plugin.hook1count += 1
+    return true
 end
 
-mutable struct FrameworkTestPlugin{Next} <: Plugin
-    next::Next
+hook2_handler(plugin::CounterPlugin, framework) = begin
+    plugin.hook2count += 1
+    return true
+end
+
+chain_of_empties(length=20) = [EmptyPlugin() for i = 1: length]
+
+mutable struct FrameworkTestPlugin <: Plugin
     calledwithframework
-    FrameworkTestPlugin(next) = new{typeof(next)}(next, "Never called")
+    FrameworkTestPlugin() = new("Never called")
 end
-hook1_handler(plugin::FrameworkTestPlugin{Next}, framework) where Next = plugin.calledwithframework = framework
+hook1_handler(plugin::FrameworkTestPlugin, framework) = plugin.calledwithframework = framework
 
-mutable struct EventTestPlugin{Next} <: Plugin
-    next::Next
+mutable struct EventTestPlugin <: Plugin
     calledwithframework
     calledwithevent
-    EventTestPlugin(next) = new{typeof(next)}(next, "Never called", "Never called")
+    EventTestPlugin() = new("Never called", "Never called")
 end
-event_handler(plugin::EventTestPlugin{Next}, framework, event) where Next = begin
+event_handler(plugin::EventTestPlugin, framework, event) = begin
     plugin.calledwithframework = framework
     plugin.calledwithevent = event
 end
 
-struct ConfigurablePlugin{Next} <: Plugin
-    next::Next
+struct ConfigurablePlugin <: Plugin
     config::String
-    ConfigurablePlugin(next, config::String = "default") = new{typeof(next)}(next, config)
+    ConfigurablePlugin(config::String = "default") = new(config)
 end
-checkconfig_handler(plugin::ConfigurablePlugin{Next}, framework, event) where Next = begin
+checkconfig_handler(plugin::ConfigurablePlugin, framework, event) = begin
     if event.config !== plugin.config
         throw("Not the same!")
     end
 end
 
-struct PropagationStopperPlugin{Next} <: Plugin
-    next::Next
+struct PropagationStopperPlugin <: Plugin
 end
 propagationtest(plugin::PropagationStopperPlugin, framework, data) = data !== 42
 
-struct PropagationCheckerPlugin{Next} <: Plugin
-    next::Next
+struct PropagationCheckerPlugin <: Plugin
 end
 propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32 || throw("Not 32!")
 
+mutable struct DynamicPlugin <: Plugin
+    lastdata
+end
+dynamismtest(plugin::DynamicPlugin, framework, data) = plugin.lastdata = data
+
 @testset "Plugins.jl" begin
     @testset "Plugin chain" begin
-        innerplugins = EmptyPlugin(TerminalPlugin())
-        counter = CounterPlugin(innerplugins)
-        a1 = Framework(counter)
-        a1_hook1s = hooks(a1, hook1_handler)
+        innerplugin = EmptyPlugin()
+        counter = CounterPlugin()
+        @show a1 = Framework([counter, innerplugin])
+        @show a1_hook1s = hooks(a1, hook1_handler)
         @test length(a1_hook1s) === 1
         for i=1:1e5 a1_hook1s() end
         @time for i=1:1e5 a1_hook1s() end
@@ -81,9 +82,9 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
     end
 
     @testset "Same plugin twice" begin
-        innercounter = CounterPlugin(TerminalPlugin())
-        outercounter = CounterPlugin(innercounter)
-        a2 = Framework(outercounter)
+        innercounter = CounterPlugin()
+        outercounter = CounterPlugin()
+        a2 = Framework([outercounter, innercounter])
         a2_hook1s = hooks(a2, hook1_handler)
         @test length(a2_hook1s) === 2
         for i=1:1e5 a2_hook1s() end
@@ -96,37 +97,36 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
     end
 
     @testset "Chain of empty Plugins to eliminate" begin
-        innerchainedplugin = CounterPlugin(chain_of_empties(TerminalPlugin()))
-        chainedplugin = CounterPlugin(chain_of_empties(innerchainedplugin))
-        chainedapp = Framework(chainedplugin)
-
+        innerplugin = CounterPlugin()
+        outerplugin = CounterPlugin()
+        chainedapp = Framework(vcat([outerplugin], chain_of_empties(), [innerplugin], chain_of_empties()))
         chainedapp_hook1s = hooks(chainedapp, hook1_handler)
         for i=1:1e5 chainedapp_hook1s() end
         @time for i=1:1e5 chainedapp_hook1s() end
-        @test chainedplugin.hook1count == 2e5
-        @test chainedplugin.hook2count == 0
-        @test innerchainedplugin.hook1count == 2e5
-        @test innerchainedplugin.hook2count == 0
+        @test outerplugin.hook1count == 2e5
+        @test outerplugin.hook2count == 0
+        @test innerplugin.hook1count == 2e5
+        @test innerplugin.hook2count == 0
     end
 
     @testset "Framework goes through" begin
-        frameworktestapp = Framework(EmptyPlugin(FrameworkTestPlugin(TerminalPlugin())))
+        frameworktestapp = Framework([EmptyPlugin(), FrameworkTestPlugin()])
         hooks(frameworktestapp, hook1_handler)()
-        @test frameworktestapp.plugins.next.calledwithframework === frameworktestapp
+        @test frameworktestapp.plugins[2].calledwithframework === frameworktestapp
     end
 
     @testset "Event object" begin
-        eventtestapp = Framework(EmptyPlugin(EventTestPlugin(TerminalPlugin())))
+        eventtestapp = Framework([EmptyPlugin(), EventTestPlugin()])
         event = (name="test event", data=42)
         hooks(eventtestapp, event_handler)(event)
-        @test eventtestapp.plugins.next.calledwithframework === eventtestapp
-        @test eventtestapp.plugins.next.calledwithevent === event
+        @test eventtestapp.plugins[2].calledwithframework === eventtestapp
+        @test eventtestapp.plugins[2].calledwithevent === event
     end
 
     @testset "Multiple apps with same chain, differently configured" begin
         app2config = "app2config"
-        app1 = Framework(EmptyPlugin(ConfigurablePlugin(TerminalPlugin())))
-        app2 = Framework(EmptyPlugin(ConfigurablePlugin(TerminalPlugin(), app2config)))
+        app1 = Framework([EmptyPlugin(), ConfigurablePlugin()])
+        app2 = Framework([EmptyPlugin(), ConfigurablePlugin(app2config)])
         event1 = (config ="default",)
         event2 = (config = app2config,)
         hooks(app1, checkconfig_handler)(event1)
@@ -136,22 +136,32 @@ propagationtest(plugin::PropagationCheckerPlugin, framework, data) = data === 32
     end
 
     @testset "Stopping Propagation" begin
-        spapp = Framework(EmptyPlugin(PropagationStopperPlugin(EmptyPlugin(PropagationCheckerPlugin(TerminalPlugin())))))
+        spapp = Framework([EmptyPlugin(), PropagationStopperPlugin(), EmptyPlugin(), PropagationCheckerPlugin()])
         hooks(spapp, propagationtest)(42) # It is stopped so the checker does not throw
         hooks(spapp, propagationtest)(32) # Not stopped but accepted by the checker
         @test_throws String hooks(spapp, propagationtest)(41)
     end
 
     @testset "HookList iteration" begin
-        c1 = CounterPlugin(EmptyPlugin(TerminalPlugin()))
-        c2 = CounterPlugin(c1)
+        c1 = CounterPlugin()
+        c2 = CounterPlugin()
         hookers = [c2, c1]
-        iapp = Framework(EmptyPlugin(c2))
+        iapp = Framework([EmptyPlugin(), c2, EmptyPlugin(), c1, EmptyPlugin()])
         @test length(hooks(iapp, hook1_handler)) === 2
         i = 1
         for hook in hooks(iapp, hook1_handler)
             @test hookers[i] === hook.plugin
             i += 1
         end
+    end
+
+    @testset "Accessing plugins directly" begin
+        empty = EmptyPlugin()
+        counter = CounterPlugin()
+        app = Framework([empty, counter])
+        @test app.plugins[1] === empty
+        @test app.plugins[2] === counter
+        @test get(app.plugins, :nothing) === empty
+        @test get(app.plugins, :counter) === counter
     end
 end
