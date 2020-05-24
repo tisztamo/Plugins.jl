@@ -30,7 +30,7 @@ end
     if hook.handler(hook.plugin, hook.framework) !== false
         return hook.next()
     end
-    return true
+    return false
 end
 
 @inline function (hook::HookList)(event)::Bool
@@ -60,7 +60,6 @@ function hooks(plugins::Array{TPlugins}, handler::THandler, framework::TFramewor
     end
     return hooks(plugins[2:end], handler, framework)
 end
-hooks(plugin::Nothing, handler, framework) = HookList(nothing, (p, f) -> nothing, nothing, nothing)
 hooks(framework::TFramework, handler::THandler) where {THandler, TFramework} = hooks(framework.plugins, handler, framework)
 hooks(stack::PluginStack, handler::THandler, framework::TFramework) where {TFramework, THandler} = hooks(stack.plugins, handler, framework)
 
