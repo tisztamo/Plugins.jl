@@ -40,8 +40,16 @@ end
     return false
 end
 
+@inline function (hook::HookList)(p1, p2)::Bool
+    if hook.handler(hook.plugin, hook.framework, p1, p2) !== false
+        return hook.next(p1, p2)
+    end
+    return false
+end
+
 (hook::HookList{Nothing, T, Nothing, Nothing})() where T = true
 (hook::HookList{Nothing, T, Nothing, Nothing})(a) where T = true
+(hook::HookList{Nothing, T, Nothing, Nothing})(p1, p2) where T = true
 
 length(l::HookList{Nothing, T, Nothing, Nothing}) where T = 0
 length(l::HookList) = 1 + length(l.next)
