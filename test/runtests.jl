@@ -180,6 +180,7 @@ end
         @test app.plugins[2] === counter
         @test get(app.plugins, :nothing) === empty
         @test get(app.plugins, :counter) === counter
+        @test app.plugins[:nothing] === empty
     end
 
     @testset "Lifecycle Hooks" begin

@@ -18,6 +18,7 @@ end
 
 Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.cache, key, default)
 Base.getindex(stack::PluginStack, idx) = getindex(stack.plugins, idx)
+Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
 
 struct HookList{TNext, THandler, TPlugin, TFramework}
     next::TNext
