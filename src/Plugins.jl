@@ -64,7 +64,9 @@ function hooks(plugins::Array{TPlugins}, handler::THandler, framework::TFramewor
         return HookList(nothing, nothing, nothing, nothing)
     end
     plugin = plugins[1]
-    if length(methods(handler, (typeof(plugin), TFramework))) > 0 || length(methods(handler, (typeof(plugin), TFramework, Any))) > 0
+    if length(methods(handler, (typeof(plugin), TFramework))) > 0 ||
+        length(methods(handler, (typeof(plugin), TFramework, Any))) > 0 ||
+        length(methods(handler, (typeof(plugin), TFramework, Any, Any))) > 0
         return HookList(hooks(plugins[2:end], handler, framework), handler, plugin, framework)
     end
     return hooks(plugins[2:end], handler, framework)
