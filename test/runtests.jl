@@ -1,5 +1,5 @@
 using Plugins
-import Plugins.symbol
+import Plugins.symbol, Plugins.setup!
 using Test
 
 struct Framework
@@ -66,6 +66,12 @@ mutable struct DynamicPlugin <: Plugin
     lastdata
 end
 dynamismtest(plugin::DynamicPlugin, framework, data) = plugin.lastdata = data
+
+mutable struct LifeCycleTestPlugin <: Plugin
+    setupcalledwith
+    LifeCycleTestPlugin() = new()
+end
+setup!(plugin::LifeCycleTestPlugin, framework) = plugin.setupcalledwith = framework
 
 @testset "Plugins.jl" begin
     @testset "Plugin chain" begin
@@ -163,5 +169,12 @@ dynamismtest(plugin::DynamicPlugin, framework, data) = plugin.lastdata = data
         @test app.plugins[2] === counter
         @test get(app.plugins, :nothing) === empty
         @test get(app.plugins, :counter) === counter
+    end
+
+    @testset "Lifecycle Hooks" begin
+        plugin = LifeCycleTestPlugin()
+        app = Framework([EmptyPlugin(), plugin])
+        setup!(app.plugins, app)
+        @test plugin.setupcalledwith === app
     end
 end

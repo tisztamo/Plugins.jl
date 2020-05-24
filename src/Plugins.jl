@@ -64,19 +64,26 @@ hooks(plugin::Nothing, handler, framework) = HookList(nothing, (p, f) -> nothing
 hooks(framework::TFramework, handler::THandler) where {THandler, TFramework} = hooks(framework.plugins, handler, framework)
 hooks(stack::PluginStack, handler::THandler, framework::TFramework) where {TFramework, THandler} = hooks(stack.plugins, handler, framework)
 
-function setup!(stack::PluginStack, framework)
-    allok = true
-    results = []
-    for plugin in stack.plugins
-        try
-            push!(results, setup!(plugin, framework))
-        catch e
-            allok = false
-            push!(results, e)
+function create_lifecyclehook(op::Function) 
+    return (stack::PluginStack, framework) -> begin
+        allok = true
+        results = []
+        for plugin in stack.plugins
+            try
+                push!(results, op(plugin, framework))
+            catch e
+                allok = false
+                push!(results, e)
+            end
         end
+        return (allok = allok, results = results)
     end
-    return (allok = allok, results = results)
 end
-shutdown!(plugins::Plugins) = shutdown!.(values(plugins.plugins))
+
+setup_stack! = create_lifecyclehook(setup!)
+shutdown_stack! = create_lifecyclehook(shutdown!)
+
+setup!(stack::PluginStack, framework) = setup_stack!(stack, framework)
+shutdown!(stack::PluginStack, framework) = shutdown_stack!(stack, framework)
 
 end # module
