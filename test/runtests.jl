@@ -185,7 +185,7 @@ end
     @testset "Lifecycle Hooks" begin
         plugin = LifeCycleTestPlugin()
         app = Framework([EmptyPlugin(), plugin])
-        setup!(app.plugins, app)
+        @test setup!(app.plugins, app).allok == true
         @test plugin.setupcalledwith === app
 
         shutdown!(app.plugins, app)
