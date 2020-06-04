@@ -10,8 +10,8 @@ The system is configured with an array of plugins. If multiple plugins implement
 Plugins.jl allows full compiler optimization, meaning plugin execution can be just as performant as a manually composed system.
 
 ```julia
-# Simple Plugins.jl example with two plugins implementing a hook: A logger and a counter. The logger also registers itself
-# to provide an API
+# Simple Plugins.jl example with two plugins implementing a hook: A logger and a counter. The logger also
+# registers itself to provide an API
 
 using Plugins, Test
 
