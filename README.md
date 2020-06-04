@@ -34,10 +34,12 @@ end
 
 counter = CounterPlugin()
 app = Framework([counter, LoggerPlugin()])
-hook1 = hooks(app, hook1_handler) # Builds a type chain to encompass only plugins that implement hook1_handler
+hook1 = hooks(app, hook1_handler)
 
 hook1() # Prints "hook1 called" and returns true
 @test counter.hook1count === 1
 ```
+
+At non-critical points you can call `hooks()` every time, but if you cannot waste a few microseconds, you have to cache the result. Note that `hooks()` is _not_ type-stable as it builds a type chain by filtering plugins that impement the specified hook. This means you have to parametrize your framework struct with the performance-critical hooks and call `hooks()` in the constructor. I plan to add a layer that makes this automatically, allowing you to only parametrize with a `PluginStack`.
 
 That's all the documentation at the time, please check the [tests](https://github.com/tisztamo/Plugins.jl/blob/master/test/runtests.jl) for more examples.
