@@ -34,10 +34,10 @@ end
 
 counter = CounterPlugin()
 app = Framework([counter, LoggerPlugin()])
-hook1 = hooks(app, hook1_handler)
+hook1 = hooks(app, hook1_handler) # Builds a type chain to encompass only plugins that implement hook1_handler
 
 hook1() # Prints "hook1 called" and returns true
 @test counter.hook1count === 1
 ```
 
-That's all the documentation at the time, please check the [tests](https://github.com/tisztamo/Plugins.jl/blob/master/test/runtests.jl) for more examples
+That's all the documentation at the time, please check the [tests](https://github.com/tisztamo/Plugins.jl/blob/master/test/runtests.jl) for more examples.
