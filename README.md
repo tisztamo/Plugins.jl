@@ -7,7 +7,7 @@ A Plugin is a chunk of code that adds functionality to a system. It implements s
 
 The system is configured with an array of plugins. If multiple plugins implement the same hook, they will be called in their order, with any plugin able to halt the processing. Plugins can also publish an API by registering a symbol.
 
-Plugins.jl allows full compiler optimization, meaning plugin execution can be just as performant as a manually composed system.
+Plugins.jl allows full compiler optimization, meaning plugin execution can be just as performant as a manually composed system. (Yes, the merged hook implementations can be inlined.)
 
 ```julia
 # Simple Plugins.jl example with two plugins implementing a hook: A logger and a counter. The logger also
