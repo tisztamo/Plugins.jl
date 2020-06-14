@@ -1,7 +1,7 @@
 name = "Plugins"
 uuid = "231a7ae5-8495-40ed-9891-ff920a14b9bd"
 authors = ["Krisztián Schaffer"]
-version = "0.1.1"
+version = "0.1.2"
 
 [compat]
 julia = "1.3"

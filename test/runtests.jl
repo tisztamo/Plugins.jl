@@ -1,5 +1,5 @@
 using Plugins
-import Plugins.symbol, Plugins.setup!
+import Plugins.symbol, Plugins.setup!, Plugins.setup!
 using Test
 
 struct Framework
@@ -189,7 +189,7 @@ end
         @test setup!(app.plugins, app).allok == true
         @test plugin.setupcalledwith === app
 
-        shutdown!(app.plugins, app)
+        @test shutdown!(app.plugins, app).allok == true
         @test plugin.shutdowncalledwith === app
         @test shutdown!(app.plugins, 42).allok === false
         @test plugin.shutdowncalledwith === 42

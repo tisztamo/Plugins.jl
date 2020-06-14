@@ -7,8 +7,8 @@ export PluginStack, Plugin, hooks, symbol, setup!, shutdown!
 abstract type Plugin end
 
 symbol(plugin::Plugin) = :nothing
-setup!(plugin::Plugin, scheduler) = nothing
-shutdown!(plugin::Plugin) = nothing
+setup!(plugin::Plugin, x...) = nothing
+shutdown!(plugin::Plugin, x...) = nothing
 
 struct PluginStack
     plugins::Array{Plugin}
@@ -27,6 +27,8 @@ struct HookList{TNext, THandler, TPlugin, TFramework}
     framework::TFramework
 end
 
+HookListTerminal = HookList{Nothing, Nothing, Nothing, Nothing}
+
 @inline function (hook::HookList)(params...)::Bool
     if hook.handler(hook.plugin, hook.framework, params...) !== false
         return hook.next(params...)
@@ -34,18 +36,18 @@ end
     return false
 end
 
-(hook::HookList{Nothing, T, Nothing, Nothing})(::Vararg{Any}) where T = true
+(hook::HookListTerminal)(::Vararg{Any}) = true
 
-length(l::HookList{Nothing, T, Nothing, Nothing}) where T = 0
+length(l::HookListTerminal) = 0
 length(l::HookList) = 1 + length(l.next)
 
 iterate(l::HookList) = (l, l.next)
 iterate(l::HookList, state) = isnothing(state) ? nothing : (state, state.next)
-iterate(l::HookList, state::HookList{Nothing, T, Nothing, Nothing}) where T = nothing
+iterate(l::HookList, state::HookListTerminal) = nothing
 
 function hooks(plugins::Array{TPlugins}, handler::THandler, framework::TFramework) where {TFramework, THandler, TPlugins}
     if length(plugins) == 0
-        return HookList(nothing, nothing, nothing, nothing)
+        return HookListTerminal(nothing, nothing, nothing, nothing)
     end
     plugin = plugins[1]
     if length(methods(handler, (typeof(plugin), TFramework, Vararg{Any}))) > 0
