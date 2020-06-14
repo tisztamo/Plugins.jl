@@ -27,30 +27,14 @@ struct HookList{TNext, THandler, TPlugin, TFramework}
     framework::TFramework
 end
 
-@inline function (hook::HookList)()::Bool
-    if hook.handler(hook.plugin, hook.framework) !== false
-        return hook.next()
+@inline function (hook::HookList)(params...)::Bool
+    if hook.handler(hook.plugin, hook.framework, params...) !== false
+        return hook.next(params...)
     end
     return false
 end
 
-@inline function (hook::HookList)(event)::Bool
-    if hook.handler(hook.plugin, hook.framework, event) !== false
-        return hook.next(event)
-    end
-    return false
-end
-
-@inline function (hook::HookList)(p1, p2)::Bool
-    if hook.handler(hook.plugin, hook.framework, p1, p2) !== false
-        return hook.next(p1, p2)
-    end
-    return false
-end
-
-(hook::HookList{Nothing, T, Nothing, Nothing})() where T = true
-(hook::HookList{Nothing, T, Nothing, Nothing})(a) where T = true
-(hook::HookList{Nothing, T, Nothing, Nothing})(p1, p2) where T = true
+(hook::HookList{Nothing, T, Nothing, Nothing})(::Vararg{Any}) where T = true
 
 length(l::HookList{Nothing, T, Nothing, Nothing}) where T = 0
 length(l::HookList) = 1 + length(l.next)
@@ -64,9 +48,7 @@ function hooks(plugins::Array{TPlugins}, handler::THandler, framework::TFramewor
         return HookList(nothing, nothing, nothing, nothing)
     end
     plugin = plugins[1]
-    if length(methods(handler, (typeof(plugin), TFramework))) > 0 ||
-        length(methods(handler, (typeof(plugin), TFramework, Any))) > 0 ||
-        length(methods(handler, (typeof(plugin), TFramework, Any, Any))) > 0
+    if length(methods(handler, (typeof(plugin), TFramework, Vararg{Any}))) > 0
         return HookList(hooks(plugins[2:end], handler, framework), handler, plugin, framework)
     end
     return hooks(plugins[2:end], handler, framework)
