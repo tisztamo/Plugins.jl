@@ -28,7 +28,7 @@ end
 
 function hook1_handler(me::LoggerPlugin, framework)
   log(me, "hook1 called!")
-  return true # Allow other hooks to run. return false to "stop propagation"
+  return false # Allow other hooks to run. return true to "stop propagation"
 end
 
 Plugins.symbol(::LoggerPlugin) = :logger
@@ -40,7 +40,7 @@ end
 
 @inline hook1_handler(plugin::CounterPlugin, framework) = begin
     plugin.hook1count += 1
-    return true 
+    return false 
 end
 
 counter = CounterPlugin()

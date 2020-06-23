@@ -30,10 +30,10 @@ end
 HookListTerminal = HookList{Nothing, Nothing, Nothing, Nothing}
 
 @inline function (hook::HookList)(params...)::Bool
-    if hook.handler(hook.plugin, hook.framework, params...) !== false
+    if hook.handler(hook.plugin, hook.framework, params...) !== true
         return hook.next(params...)
     end
-    return false
+    return true
 end
 
 (hook::HookListTerminal)(::Vararg{Any}) = true
@@ -59,12 +59,12 @@ hooks(framework::TFramework, handler::THandler) where {THandler, TFramework} = h
 hooks(stack::PluginStack, handler::THandler, framework::TFramework) where {TFramework, THandler} = hooks(stack.plugins, handler, framework)
 
 function create_lifecyclehook(op::Function) 
-    return (stack::PluginStack, framework) -> begin
+    return (stack::PluginStack, data) -> begin
         allok = true
         results = []
         for plugin in stack.plugins
             try
-                push!(results, op(plugin, framework))
+                push!(results, op(plugin, data))
             catch e
                 allok = false
                 push!(results, e)

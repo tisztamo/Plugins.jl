@@ -18,12 +18,12 @@ end
 symbol(::CounterPlugin) = :counter
 @inline hook1_handler(plugin::CounterPlugin, framework) = begin
     plugin.hook1count += 1
-    return true
+    return false
 end
 
 hook2_handler(plugin::CounterPlugin, framework) = begin
     plugin.hook2count += 1
-    return true
+    return false
 end
 
 chain_of_empties(length=20) = [EmptyPlugin() for i = 1: length]
@@ -56,8 +56,8 @@ end
 
 struct PropagationStopperPlugin <: Plugin
 end
-propagationtest(plugin::PropagationStopperPlugin, framework, data) = data !== 42
-propagationtest_nodata(plugin::PropagationStopperPlugin, framework) = false
+propagationtest(plugin::PropagationStopperPlugin, framework, data) = data == 42
+propagationtest_nodata(plugin::PropagationStopperPlugin, framework) = true
 
 struct PropagationCheckerPlugin <: Plugin
 end
@@ -72,6 +72,7 @@ dynamismtest(plugin::DynamicPlugin, framework, data) = plugin.lastdata = data
 mutable struct LifeCycleTestPlugin <: Plugin
     setupcalledwith
     shutdowncalledwith
+    deferredinitcalledwith
     LifeCycleTestPlugin() = new()
 end
 Plugins.setup!(plugin::LifeCycleTestPlugin, framework) = plugin.setupcalledwith = framework
@@ -81,6 +82,8 @@ Plugins.shutdown!(plugin::LifeCycleTestPlugin, framework) = begin
         throw("shutdown called with 42")
     end
 end
+deferred_init(plugin::Plugin, ::Any) = true
+deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith = data
 
 @testset "Plugins.jl" begin
     @testset "Plugin chain" begin
@@ -152,11 +155,11 @@ end
 
     @testset "Stopping Propagation" begin
         spapp = Framework([EmptyPlugin(), PropagationStopperPlugin(), EmptyPlugin(), PropagationCheckerPlugin()])
-        hooks(spapp, propagationtest)(42) === false # It is stopped so the checker does not throw
-        hooks(spapp, propagationtest)(32) === true # Not stopped but accepted by the checker
+        hooks(spapp, propagationtest)(42) === true # It is stopped so the checker does not throw
+        hooks(spapp, propagationtest)(32) === false # Not stopped but accepted by the checker
         @test_throws String hooks(spapp, propagationtest)(41)
 
-        @test hooks(spapp, propagationtest_nodata)() === false
+        @test hooks(spapp, propagationtest_nodata)() === true
     end
 
     @testset "HookList iteration" begin
@@ -189,9 +192,15 @@ end
         @test setup!(app.plugins, app).allok == true
         @test plugin.setupcalledwith === app
 
-        @test shutdown!(app.plugins, app).allok == true
+        # Create a non-standard lifecycle hook
+        lifecycle_hook = Plugins.create_lifecyclehook(deferred_init)
+        @test lifecycle_hook(app.plugins, "42").allok === true
+        @test plugin.deferredinitcalledwith === "42"
+
+        @test shutdown!(app.plugins, app).allok === true
         @test plugin.shutdowncalledwith === app
         @test shutdown!(app.plugins, 42).allok === false
         @test plugin.shutdowncalledwith === 42
+        
     end
 end
