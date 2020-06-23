@@ -36,7 +36,7 @@ HookListTerminal = HookList{Nothing, Nothing, Nothing, Nothing}
     return true
 end
 
-(hook::HookListTerminal)(::Vararg{Any}) = true
+(hook::HookListTerminal)(::Vararg{Any}) = false
 
 length(l::HookListTerminal) = 0
 length(l::HookList) = 1 + length(l.next)

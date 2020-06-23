@@ -127,6 +127,11 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test innerplugin.hook2count == 0
     end
 
+    @testset "Unhandled hook returns false" begin
+        app = Framework([EmptyPlugin()])
+        @test hooks(app, hook1_handler)() == false
+    end
+
     @testset "Framework goes through" begin
         frameworktestapp = Framework([EmptyPlugin(), FrameworkTestPlugin()])
         hooks(frameworktestapp, hook1_handler)()
