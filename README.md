@@ -7,7 +7,7 @@ A Plugin is a chunk of code that adds functionality to a system. It implements s
 
 The system is configured with an array of plugins. If multiple plugins implement the same hook, they will be called in their order, with any plugin able to halt the processing. Plugins can also publish an API by registering a symbol.
 
-Plugins.jl allows full compiler optimization, meaning plugin execution can be just as performant as a manually composed system. (Yes, the merged hook implementations can be inlined.)
+Plugins.jl allows full compiler optimization, meaning plugin execution can be just as performant as a manually composed system. Inlinable hook implementations will be merged into a single function body, and non-implementing plugins are skipped with zero overhead.
 
 ```julia
 # Simple Plugins.jl example with two plugins implementing a hook: A logger and a counter. The logger also
@@ -54,6 +54,6 @@ hook1() # Prints "Logger Plugin in action: hook1 called!" and returns true
 log(app.plugins[:logger], "A log message")
 ```
 
-At non-critical points you can call `hooks()` every time, but if you cannot waste a few microseconds, you have to cache the result. Note that `hooks()` is _not_ type-stable, because to allow optimization it builds a type chain by filtering plugins that impement the specified hook. This means you have to parametrize your framework struct with the performance-critical hooks and call `hooks()` in the constructor. I plan to add a layer that makes this automatically, allowing you to only parametrize with a `PluginStack`.
+At non-critical points you can call `hooks()` every time, but if you cannot waste a few microseconds, you have to cache the result. Note that `hooks()` is _not_ type-stable, because to allow optimization it builds a type chain by filtering plugins that implement the specified hook. 
 
 That's all the documentation at the time, please check the [tests](https://github.com/tisztamo/Plugins.jl/blob/master/test/runtests.jl) for more examples.
