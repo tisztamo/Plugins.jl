@@ -16,7 +16,7 @@ mutable struct CounterPlugin <: Plugin
     CounterPlugin() = new(0, 0)
 end
 symbol(::CounterPlugin) = :counter
-@inline hook1_handler(plugin::CounterPlugin, framework) = begin
+@inline hook1(plugin::CounterPlugin, framework) = begin
     plugin.hook1count += 1
     return false
 end
@@ -32,7 +32,7 @@ mutable struct FrameworkTestPlugin <: Plugin
     calledwithframework
     FrameworkTestPlugin() = new("Never called")
 end
-hook1_handler(plugin::FrameworkTestPlugin, framework) = plugin.calledwithframework = framework
+hook1(plugin::FrameworkTestPlugin, framework) = plugin.calledwithframework = framework
 
 mutable struct EventTestPlugin <: Plugin
     calledwithframework
@@ -69,6 +69,47 @@ mutable struct DynamicPlugin <: Plugin
 end
 dynamismtest(plugin::DynamicPlugin, framework, data) = plugin.lastdata = data
 
+
+# Hook cache test:
+mutable struct SharedState
+    plugins::PluginStack
+    shared_counter::Int
+end
+
+struct App{TCache}
+    state::SharedState
+    hooks::TCache
+    function App(plugins, hooklist)
+        state = SharedState(PluginStack(plugins), 0)
+        cache = hook_cache(hooklist, state)
+        return new{typeof(cache)}(state, cache)
+    end
+end
+
+const OP_CYCLES = 1e7
+
+function op(app::App)
+    counters = [counter for counter in app.state.plugins if counter isa CounterPlugin]
+    @info "op: A sample operation on the app, involving hook1() calls in a semi-realistic setting."
+    @info "op: $(length(counters)) CounterPlugins from $(length(app.state.plugins)) plugins, each CounterPlugin incrementing a private counter."
+
+    start_hook1count = app.state.shared_counter
+    
+    start_ts = time_ns()
+    for i in 1:OP_CYCLES
+        app.hooks.hook1()
+    end
+    end_ts = time_ns()
+
+    for i = 1:length(counters)
+        @test counters[i].hook1count == OP_CYCLES
+    end
+
+    time_diff = end_ts - start_ts
+    @info "op: $OP_CYCLES hook1() calls took $(time_diff / 1e9) secs. That is $(time_diff / OP_CYCLES) nanosecs per call on average."
+end
+
+
 mutable struct LifeCycleTestPlugin <: Plugin
     setupcalledwith
     shutdowncalledwith
@@ -90,7 +131,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         innerplugin = EmptyPlugin()
         counter = CounterPlugin()
         a1 = Framework([counter, innerplugin])
-        a1_hook1s = hooks(a1, hook1_handler)
+        a1_hook1s = hooks(a1, hook1)
         @test length(a1_hook1s) === 1
         for i=1:1e5 a1_hook1s() end
         @time for i=1:1e5 a1_hook1s() end
@@ -103,7 +144,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         innercounter = CounterPlugin()
         outercounter = CounterPlugin()
         a2 = Framework([outercounter, innercounter])
-        a2_hook1s = hooks(a2, hook1_handler)
+        a2_hook1s = hooks(a2, hook1)
         @test length(a2_hook1s) === 2
         for i=1:1e5 a2_hook1s() end
         @time for i=1:1e5 a2_hook1s() end
@@ -118,7 +159,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         innerplugin = CounterPlugin()
         outerplugin = CounterPlugin()
         chainedapp = Framework(vcat([outerplugin], chain_of_empties(), [innerplugin], chain_of_empties()))
-        chainedapp_hook1s = hooks(chainedapp, hook1_handler)
+        chainedapp_hook1s = hooks(chainedapp, hook1)
         for i=1:1e5 chainedapp_hook1s() end
         @time for i=1:1e5 chainedapp_hook1s() end
         @test outerplugin.hook1count == 2e5
@@ -129,12 +170,12 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
 
     @testset "Unhandled hook returns false" begin
         app = Framework([EmptyPlugin()])
-        @test hooks(app, hook1_handler)() == false
+        @test hooks(app, hook1)() == false
     end
 
     @testset "Framework goes through" begin
         frameworktestapp = Framework([EmptyPlugin(), FrameworkTestPlugin()])
-        hooks(frameworktestapp, hook1_handler)()
+        hooks(frameworktestapp, hook1)()
         @test frameworktestapp.plugins[2].calledwithframework === frameworktestapp
     end
 
@@ -172,9 +213,9 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         c2 = CounterPlugin()
         hookers = [c2, c1]
         iapp = Framework([EmptyPlugin(), c2, EmptyPlugin(), c1, EmptyPlugin()])
-        @test length(hooks(iapp, hook1_handler)) === 2
+        @test length(hooks(iapp, hook1)) === 2
         i = 1
-        for hook in hooks(iapp, hook1_handler)
+        for hook in hooks(iapp, hook1)
             @test hookers[i] === hook.plugin
             i += 1
         end
@@ -189,6 +230,15 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test get(app.plugins, :nothing) === empty
         @test get(app.plugins, :counter) === counter
         @test app.plugins[:nothing] === empty
+        @test length(app.plugins) == 2
+    end
+
+    @testset "Hook cache" begin
+        firstcounter = CounterPlugin()
+        counters = [CounterPlugin() for i=1:30]
+        empties = [EmptyPlugin() for i=1:100]
+        app = App([firstcounter, empties..., counters...], [hook1])
+        op(app)
     end
 
     @testset "Lifecycle Hooks" begin
@@ -206,6 +256,5 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test plugin.shutdowncalledwith === app
         @test shutdown!(app.plugins, 42).allok === false
         @test plugin.shutdowncalledwith === 42
-        
     end
 end
