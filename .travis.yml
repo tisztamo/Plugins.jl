@@ -17,6 +17,5 @@ jobs:
   include:
     - stage: Documentation
       julia: 1.3
-      script: julia --project -e '
-          include("docs/make.jl");'
+      script: julia --project=docs docs/make.jl
       after_success: skip
