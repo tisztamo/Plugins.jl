@@ -28,6 +28,8 @@ end
 
 chain_of_empties(length=20) = [EmptyPlugin() for i = 1: length]
 
+callmanytimes(hook, times=1e5) = for i=1:times hook() end
+
 mutable struct FrameworkTestPlugin <: Plugin
     calledwithframework
     FrameworkTestPlugin() = new("Never called")
@@ -91,7 +93,7 @@ const OP_CYCLES = 1e7
 function op(app::App)
     counters = [counter for counter in app.state.plugins if counter isa CounterPlugin]
     @info "op: A sample operation on the app, involving hook1() calls in a semi-realistic setting."
-    @info "op: $(length(counters)) CounterPlugins from $(length(app.state.plugins)) plugins, each CounterPlugin incrementing a private counter."
+    @info "op: $(length(counters)) CounterPlugins found, $(length(app.state.plugins)) plugins in total, each CounterPlugin incrementing a private counter."
 
     start_hook1count = app.state.shared_counter
     
@@ -106,7 +108,8 @@ function op(app::App)
     end
 
     time_diff = end_ts - start_ts
-    @info "op: $OP_CYCLES hook1() calls took $(time_diff / 1e9) secs. That is $(time_diff / OP_CYCLES) nanosecs per call on average."
+    avg_calltime = time_diff / OP_CYCLES
+    @info "op: $OP_CYCLES hook1() calls took $(time_diff / 1e9) secs. That is $avg_calltime nanosecs per call on average, or $(avg_calltime / length(counters)) ns per in-plugin counter increment."
 end
 
 
@@ -133,8 +136,9 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         a1 = Framework([counter, innerplugin])
         a1_hook1s = hooks(a1, hook1)
         @test length(a1_hook1s) === 1
-        for i=1:1e5 a1_hook1s() end
-        @time for i=1:1e5 a1_hook1s() end
+        callmanytimes(a1_hook1s)
+        @info "$(length(a1.plugins))-length chain, $(length(a1_hook1s)) counter (1e5 cycles):"
+        @time callmanytimes(a1_hook1s)
         hooks(a1, hook2_handler)()
         @test counter.hook1count == 2e5
         @test counter.hook2count == 1
@@ -146,8 +150,9 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         a2 = Framework([outercounter, innercounter])
         a2_hook1s = hooks(a2, hook1)
         @test length(a2_hook1s) === 2
-        for i=1:1e5 a2_hook1s() end
-        @time for i=1:1e5 a2_hook1s() end
+        callmanytimes(a2_hook1s)
+        @info "$(length(a2.plugins))-length chain, $(length(a2_hook1s)) counters (1e5 cycles):"
+        @time callmanytimes(a2_hook1s)
         hooks(a2, hook2_handler)()
         @test innercounter.hook1count == 2e5
         @test innercounter.hook2count == 1
@@ -160,8 +165,9 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         outerplugin = CounterPlugin()
         chainedapp = Framework(vcat([outerplugin], chain_of_empties(), [innerplugin], chain_of_empties()))
         chainedapp_hook1s = hooks(chainedapp, hook1)
-        for i=1:1e5 chainedapp_hook1s() end
-        @time for i=1:1e5 chainedapp_hook1s() end
+        callmanytimes(chainedapp_hook1s)
+        @info "$(length(chainedapp.plugins))-length chain,  $(length(chainedapp_hook1s))  counters (1e5 cycles):"
+        @time callmanytimes(chainedapp_hook1s)
         @test outerplugin.hook1count == 2e5
         @test outerplugin.hook2count == 0
         @test innerplugin.hook1count == 2e5
@@ -236,7 +242,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
     @testset "Hook cache" begin
         firstcounter = CounterPlugin()
         counters = [CounterPlugin() for i=1:30]
-        empties = [EmptyPlugin() for i=1:100]
+        empties = [EmptyPlugin() for i=1:1000]
         app = App([firstcounter, empties..., counters...], [hook1])
         op(app)
     end

@@ -40,6 +40,12 @@ uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
+[[Literate]]
+deps = ["Base64", "JSON", "REPL"]
+git-tree-sha1 = "422133037d6dc5df9f9b97c2cb81fcd9e35ddffe"
+uuid = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+version = "2.5.0"
+
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
@@ -59,6 +65,11 @@ version = "1.0.4"
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[[Plugins]]
+path = "/home/krisztian/projects/Plugins"
+uuid = "231a7ae5-8495-40ed-9891-ff920a14b9bd"
+version = "0.2.1"
 
 [[Printf]]
 deps = ["Unicode"]

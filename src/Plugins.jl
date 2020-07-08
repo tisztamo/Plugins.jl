@@ -4,12 +4,47 @@ import Base.length, Base.iterate, Base.get, Base.getindex
 
 export PluginStack, Plugin, hooks, symbol, hook_cache, setup!, shutdown!
 
+"""
+    abstract type Plugin
+
+Provides default implementations of lifecycle hooks.
+"""
 abstract type Plugin end
 
-symbol(plugin::Plugin) = :nothing
-setup!(plugin::Plugin, x...) = nothing
-shutdown!(plugin::Plugin, x...) = nothing
+"""
+    symbol(plugin)
 
+Return the unique Symbol of this plugin if it exports an API to other plugins.
+"""
+symbol(plugin::Plugin) = :nothing
+
+"""
+    setup!(plugin, sharedstate)
+
+Initialize the plugin with the given shared state.
+
+This lifecycle hook should be called when the application loads a plugin. Plugins.jl does not (yet) helps with this,
+application developers should do it manually, right after the PluginStack was created, before the hook_cache() call.
+"""
+setup!(plugin::Plugin, sharedstate) = nothing
+
+"""
+    shutdown!(plugin, sharedstate)
+
+Shut down the plugin.
+
+This lifecycle hook should be called when the application unloads a plugin, e.g. before the application exits.
+Plugins.jl does not (yet) helps with this, application developers should do it manually.
+"""
+shutdown!(plugin::Plugin, sharedstate) = nothing
+
+"""
+    PluginStack
+
+Holds all the plugins loaded into an application.
+
+Implements the iteration interface, and gives access using symbols, e.g. `pluginstack[:logger]`
+"""
 struct PluginStack
     plugins::Array{Plugin}
     cache::Dict{Symbol, Plugin}
@@ -24,6 +59,16 @@ Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.cache, ke
 Base.getindex(stack::PluginStack, idx) = getindex(stack.plugins, idx)
 Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
 
+"""
+    HookList{TNext, THandler, TPlugin, TSharedState}
+
+Provides fast, inlinable call to the implementations of a specific hook.
+
+You can get a HookList by calling `hooks()` directly, or using `hook_cache()`.
+
+The `HookList` can be called with a `::TSharedState` and an arbitrary number of extra arguments. If any of the
+plugins referenced in the list fails to handle the extra arguments, the call will raise a `MethodError`
+"""
 struct HookList{TNext, THandler, TPlugin, TSharedState}
     next::TNext
     handler::THandler
@@ -49,23 +94,32 @@ iterate(l::HookList) = (l, l.next)
 iterate(l::HookList, state) = isnothing(state) ? nothing : (state, state.next)
 iterate(l::HookList, state::HookListTerminal) = nothing
 
-function hooks(plugins::AbstractArray{TPlugins}, handler::THandler, sharedstate::TSharedState) where {TSharedState, THandler, TPlugins}
+"""
+    function hooks(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
+
+Create a HookList which allows fast, inlinable call to the merged implementations of `hookfn` for `TSharedState`
+by the given plugins.
+
+A plugin of type `TPlugin` found in plugins will be referenced in the resulting HookList if there is a method
+with the following signature: `hookfn(::TPlugin, ::TSharedState, ...)`
+"""
+function hooks(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
     if length(plugins) == 0
         return HookListTerminal(nothing, nothing, nothing, nothing)
     end
     plugin = plugins[1]
-    if length(methods(handler, (typeof(plugin), TSharedState, Vararg{Any}))) > 0
-        return HookList(hooks(plugins[2:end], handler, sharedstate), handler, plugin, sharedstate)
+    if length(methods(hookfn, (typeof(plugin), TSharedState, Vararg{Any}))) > 0
+        return HookList(hooks(plugins[2:end], hookfn, sharedstate), hookfn, plugin, sharedstate)
     end
-    return hooks(plugins[2:end], handler, sharedstate)
+    return hooks(plugins[2:end], hookfn, sharedstate)
 end
-hooks(sharedstate, handler) = hooks(sharedstate.plugins, handler, sharedstate)
-hooks(stack::PluginStack, handler::THandler, sharedstate::TSharedState) where {TSharedState, THandler} = hooks(stack.plugins, handler, sharedstate)
+hooks(sharedstate, hookfn) = hooks(sharedstate.plugins, hookfn, sharedstate)
+hooks(stack::PluginStack, hookfn, sharedstate) = hooks(stack.plugins, hookfn, sharedstate)
 
 """
-    hook_cache(handlers, sharedstate)
+    hook_cache(hookfns, sharedstate)
 
-Create a cache of `HookList`s from the list of handler functions.
+Create a cache of `HookList`s from the list of hook functions.
 
 Returns a NamedTuple with an entry for every handler.
 
