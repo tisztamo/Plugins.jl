@@ -9,6 +9,7 @@ makedocs(;
     pages=[
         "index.md",
         "gettingstarted.md",
+        "guide.md",
         "reference.md",
     ],
     repo="https://github.com/tisztamo/Plugins.jl/blob/{commit}{path}#L{line}",
