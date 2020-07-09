@@ -66,4 +66,4 @@ println("Average cycle time: $(@sprintf("%.2f", app.plugins[:perf].avg_elapsed))
 # *That was on the CI. On an i7 7700K I typically get around 21.15ns / 47.3 MHz.* There is no overhead compared to a direct call
 # of the `tick(::PerfPlugin, ::Any)` method.
 #
-# You can find this example under `docs/examples/gettingstarted.jl` if you check out the (repo)[https://github.com/tisztamo/Plugins.jl].
+# You can find this example under `docs/examples/gettingstarted.jl` if you check out the [repo](https://github.com/tisztamo/Plugins.jl).
