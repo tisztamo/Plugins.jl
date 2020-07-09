@@ -63,6 +63,7 @@ const app = App([PerfPlugin()], [tick])
 tickerop(app)
 println("Average cycle time: $(@sprintf("%.2f", app.plugins[:perf].avg_elapsed)) nanoseconds, Frequency: $(@sprintf("%.2f", tickfreq(app.plugins[:perf]) / 1e6)) MHz")
 
-# *That was on the CI. On an i7 7700K I typically get around 21.15ns / 47.3 MHz*
+# *That was on the CI. On an i7 7700K I typically get around 21.15ns / 47.3 MHz.* There is no overhead compared to a direct call
+# of the `tick(::PerfPlugin, ::Any)` method.
 #
-# You can find this example under `docs/examples/gettingstarted.jl` if you check out the repo.
+# You can find this example under `docs/examples/gettingstarted.jl` if you check out the (repo)[https://github.com/tisztamo/Plugins.jl].

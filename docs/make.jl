@@ -5,7 +5,9 @@ Literate.markdown("docs/examples/gettingstarted.jl", "docs/src/"; documenter = t
 
 makedocs(;
     modules=[Plugins],
-    format=Documenter.HTML(),
+    format=Documenter.HTML(
+        assets = ["assets/favicon.ico"]
+    ),
     pages=[
         "index.md",
         "gettingstarted.md",
