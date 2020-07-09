@@ -112,7 +112,6 @@ function op(app::App)
     @info "op: $OP_CYCLES hook1() calls took $(time_diff / 1e9) secs. That is $avg_calltime nanosecs per call on average, or $(avg_calltime / length(counters)) ns per in-plugin counter increment."
 end
 
-
 mutable struct LifeCycleTestPlugin <: Plugin
     setupcalledwith
     shutdowncalledwith
@@ -240,6 +239,17 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
     end
 
     @testset "Hook cache" begin
+        firstcounter = CounterPlugin()
+        counters = [CounterPlugin() for i=1:30]
+        empties = [EmptyPlugin() for i=1:1000]
+
+        simpleapp = SharedState(PluginStack([firstcounter, empties..., counters...], [hook1]), 0)
+        simpleapp_hooks = hooks(simpleapp)
+        simpleapp_hooks.hook1()
+        @test firstcounter.hook1count == 1
+    end
+
+    @testset "Hook cache as type parameter" begin
         firstcounter = CounterPlugin()
         counters = [CounterPlugin() for i=1:30]
         empties = [EmptyPlugin() for i=1:1000]

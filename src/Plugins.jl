@@ -66,7 +66,7 @@ Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
 
 Provides fast, inlinable call to the implementations of a specific hook.
 
-You can get a HookList by calling `hooks()` directly, or using `hook_cache()`.
+You can get a HookList by calling `hooklist()` directly, or using `hooks()`.
 
 The `HookList` can be called with a `::TSharedState` and an arbitrary number of extra arguments. If any of the
 plugins referenced in the list fails to handle the extra arguments, the call will raise a `MethodError`
@@ -97,7 +97,7 @@ iterate(l::HookList, state) = isnothing(state) ? nothing : (state, state.next)
 iterate(l::HookList, state::HookListTerminal) = nothing
 
 """
-    function hooks(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
+    function hooklist(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
 
 Create a HookList which allows fast, inlinable call to the merged implementations of `hookfn` for `TSharedState`
 by the given plugins.
