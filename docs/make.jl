@@ -1,7 +1,7 @@
 using Literate, Documenter, Plugins
 
 # Generating to docs/src, was unable to load pages from a different directory
-Literate.markdown("docs/src/gettingstarted.jl", "docs/src/"; documenter = true)
+Literate.markdown("docs/examples/gettingstarted.jl", "docs/src/"; documenter = true)
 
 makedocs(;
     modules=[Plugins],

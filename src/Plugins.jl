@@ -2,7 +2,7 @@ module Plugins
 
 import Base.length, Base.iterate, Base.get, Base.getindex
 
-export PluginStack, Plugin, hooks, symbol, hook_cache, setup!, shutdown!
+export PluginStack, Plugin, hooks, hooklist, symbol, hook_cache, setup!, shutdown!
 
 """
     abstract type Plugin
@@ -45,17 +45,19 @@ Holds all the plugins loaded into an application.
 
 Implements the iteration interface, and gives access using symbols, e.g. `pluginstack[:logger]`
 """
-struct PluginStack
+mutable struct PluginStack
     plugins::Array{Plugin}
-    cache::Dict{Symbol, Plugin}
-    PluginStack(plugins) = new(plugins, Dict([(symbol(plugin), plugin) for plugin in plugins]))
+    hookfns
+    symbolcache::Dict{Symbol, Plugin}
+    hookcache::Union{NamedTuple, Nothing}
+    PluginStack(plugins, hookfns = []) = new(plugins, hookfns, Dict([(symbol(plugin), plugin) for plugin in plugins]), nothing)
 end
 
 Base.length(stack::PluginStack) = length(stack.plugins)
 Base.iterate(stack::PluginStack) = iterate(stack.plugins)
 Base.iterate(stack::PluginStack, state) = iterate(stack.plugins, state)
 
-Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.cache, key, default)
+Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.symbolcache, key, default)
 Base.getindex(stack::PluginStack, idx) = getindex(stack.plugins, idx)
 Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
 
@@ -103,18 +105,29 @@ by the given plugins.
 A plugin of type `TPlugin` found in plugins will be referenced in the resulting HookList if there is a method
 with the following signature: `hookfn(::TPlugin, ::TSharedState, ...)`
 """
-function hooks(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
+function hooklist(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
     if length(plugins) == 0
         return HookListTerminal(nothing, nothing, nothing, nothing)
     end
     plugin = plugins[1]
     if length(methods(hookfn, (typeof(plugin), TSharedState, Vararg{Any}))) > 0
-        return HookList(hooks(plugins[2:end], hookfn, sharedstate), hookfn, plugin, sharedstate)
+        return HookList(hooklist(plugins[2:end], hookfn, sharedstate), hookfn, plugin, sharedstate)
     end
-    return hooks(plugins[2:end], hookfn, sharedstate)
+    return hooklist(plugins[2:end], hookfn, sharedstate)
 end
-hooks(sharedstate, hookfn) = hooks(sharedstate.plugins, hookfn, sharedstate)
-hooks(stack::PluginStack, hookfn, sharedstate) = hooks(stack.plugins, hookfn, sharedstate)
+hooklist(sharedstate, hookfn) = hooklist(sharedstate.plugins, hookfn, sharedstate)
+hooklist(stack::PluginStack, hookfn, sharedstate) = hooklist(stack.plugins, hookfn, sharedstate)
+
+"""
+    function hooks(stack::PluginStack, rebuild = true)
+"""
+function hooks(sharedstate, rebuild::Bool = false)
+    stack = sharedstate.plugins
+    if isnothing(stack.hookcache) || rebuild
+        stack.hookcache = hook_cache(stack.hookfns, sharedstate)
+    end
+    return stack.hookcache
+end
 
 """
     hook_cache(hookfns, sharedstate)
@@ -132,7 +145,7 @@ cache.hook1()
     
 """
 function hook_cache(handlers, sharedstate)
-    return (;(nameof(hook) => hooks(sharedstate, hook) for hook in handlers)...)
+    return (;(nameof(hook) => hooklist(sharedstate, hook) for hook in handlers)...)
 end
 
 function create_lifecyclehook(op::Function) 
