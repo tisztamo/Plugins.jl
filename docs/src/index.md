@@ -10,7 +10,7 @@ With Plugins.jl, execution of plugin code can be just as performant as a manuall
 
 ## Plugin-based architecture
 
-A plugin implements so-called hooks: functions that the system will call at specific points of its inner life. You can think of hooks as they were event handlers, when the event source is the "base system".
+A plugin implements so-called hooks: functions that the system will call at specific points of its inner life. You can think of hooks as they were event handlers, where the event source is the "base system".
 
 The system is configured with an array of plugins. If multiple plugins implement the same hook, they will be called in their order, with any plugin able to halt the processing by simply returning `true`.
 
