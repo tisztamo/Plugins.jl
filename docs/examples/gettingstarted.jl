@@ -1,6 +1,6 @@
 # # Getting Started
 # ## Installation
-# The package is registered, so simply: `julia> using Pkg; Pkg.add("Plugins")`
+# The package is registered, so simply: `julia> using Pkg; Pkg.add("Plugins")`. ([repo](https://github.com/tisztamo/Plugins.jl))
 
 # ## Your first plugin
 

@@ -43,7 +43,7 @@ shutdown!(plugin::Plugin, sharedstate) = nothing
 
 Manages the plugins loaded into an application.
 
-It provides fast access to the plugins by symbol, e.g. `pluginstack[:logger]`. Also implements the iteration interface.
+It provides fast access to the plugins by symbol, e.g. `pluginstack[:logger]`. Collection methods and iteration interface are implemented.
 
 The pluginstack is created from a list of plugins, and optionally a list of hook functions. If hook functions are provided,
 the `hooks()`` function can be called to
@@ -54,9 +54,29 @@ mutable struct PluginStack
     hookfns
     symbolcache::Dict{Symbol, Plugin}
     hookcache::Union{NamedTuple, Nothing}
-    PluginStack(plugins, hookfns = []) = new(plugins, hookfns, Dict([(symbol(plugin), plugin) for plugin in plugins]), nothing)
+    PluginStack(plugins, hookfns = []) = new(plugins, hookfns, symbolcache(plugins), nothing)
 end
 
+symbolcache(plugins) = Dict([(symbol(plugin), plugin) for plugin in plugins])
+
+function updated!(stack::PluginStack)
+    stack.symbolcache = symbolcache(stack.plugins)
+    stack.hookcache = nothing
+end
+
+function update!(stack::PluginStack, op, args...)
+    retval = op(stack.plugins, args...)
+    updated!(stack)
+    return retval
+end
+
+Base.push!(stack::PluginStack, items...) = update!(stack, Base.push!, items...)
+Base.pushfirst!(stack::PluginStack, items...) = update!(stack, Base.pushfirst!, items...)
+Base.pop!(stack::PluginStack, items...) = update!(stack, Base.pop!, items...)
+Base.popfirst!(stack::PluginStack, items...) = update!(stack, Base.popfirst!, items...)
+Base.empty!(stack::PluginStack, items...) = update!(stack, Base.empty!, items...)
+
+Base.isempty(stack::PluginStack) = Base.isempty(stack.plugins)
 Base.length(stack::PluginStack) = length(stack.plugins)
 Base.iterate(stack::PluginStack) = iterate(stack.plugins)
 Base.iterate(stack::PluginStack, state) = iterate(stack.plugins, state)
@@ -64,6 +84,7 @@ Base.iterate(stack::PluginStack, state) = iterate(stack.plugins, state)
 Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.symbolcache, key, default)
 Base.getindex(stack::PluginStack, idx) = getindex(stack.plugins, idx)
 Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
+Base.setindex!(stack::PluginStack, params...) = update!(stack, setindex!, params...)
 
 """
     HookList{TNext, THandler, TPlugin, TSharedState}
@@ -133,7 +154,7 @@ The first form can be used when `pluginstack` is stored in `sharedstate.plugins`
 When this function is called first time on a `PluginStack`, the hooks cache will be created by calling
 `hook_cache()`, and stored in `stack` for quick access later.
 
-The hook cache will be rebuilt if the `rebuild` argument is true.
+The hook cache will be rebuilt if the `rebuild` argument is true, or if pluginstack was modified.
 """
 function hooks end
 

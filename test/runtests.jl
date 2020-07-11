@@ -4,7 +4,7 @@ using Test
 
 struct Framework
     plugins
-    Framework(plugins) = new(PluginStack(plugins))
+    Framework(plugins, hooks=[]) = new(PluginStack(plugins, hooks))
 end
 
 struct EmptyPlugin <: Plugin
@@ -272,5 +272,72 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test plugin.shutdowncalledwith === app
         @test shutdown!(app.plugins, 42).allok === false
         @test plugin.shutdowncalledwith === 42
+    end
+
+    @testset "Modifying plugins" begin
+        c1 = CounterPlugin()
+        c2 = CounterPlugin()
+        app = Framework([EmptyPlugin(), c1], [hook1])
+        cache = hooks(app)
+        cache.hook1()
+        push!(app.plugins, c2)
+        cache = hooks(app)
+        cache.hook1()
+        @test c2.hook1count == 1
+        @test c1.hook1count == 2
+
+        @test pop!(app.plugins) === c2
+        cache = hooks(app)
+        cache.hook1()
+        @test c2.hook1count == 1
+        @test c1.hook1count == 3
+
+        @test popfirst!(app.plugins) isa EmptyPlugin
+        cache = hooks(app)
+        cache.hook1()
+        @test c2.hook1count == 1
+        @test c1.hook1count == 4
+
+
+        pushfirst!(app.plugins, c2)
+        cache = hooks(app)
+        cache.hook1()
+        @test c2.hook1count == 2
+        @test c1.hook1count == 5
+        @test app.plugins[1] === c2
+
+        pop!(app.plugins)
+        @test length(app.plugins) == 1
+        @test isempty(app.plugins) == false
+        pop!(app.plugins)
+        @test length(app.plugins) == 0
+        @test isempty(app.plugins) == true
+        @test_throws ArgumentError pop!(app.plugins)
+
+        c3 = CounterPlugin()
+        app = Framework([EmptyPlugin(), c3], [hook1])
+        @test isempty(app.plugins) == false
+        cache = hooks(app)
+        cache.hook1()
+        @test c3.hook1count == 1
+        empty!(app.plugins)
+        @test isempty(app.plugins) == true
+        cache = hooks(app)
+        cache.hook1()
+        @test c3.hook1count == 1
+
+        c4 = CounterPlugin()
+        c5 = CounterPlugin()
+        app = Framework([EmptyPlugin(), c4], [hook1])
+        @test isempty(app.plugins) == false
+        cache = hooks(app)
+        cache.hook1()
+        @test c4.hook1count == 1
+        @test c5.hook1count == 0
+        app.plugins[2] = c5
+        cache = hooks(app)
+        cache.hook1()
+        @test c4.hook1count == 1
+        @test c5.hook1count == 1
     end
 end
