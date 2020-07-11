@@ -11,24 +11,24 @@ using Plugins, Printf
 
 mutable struct PerfPlugin <: Plugin
     last_call_ts::UInt64
-    avg_elapsed::Float64
+    avg_elapsed::Float32
     PerfPlugin() = new(time_ns(), 0)
 end
 
 Plugins.symbol(::PerfPlugin) = :perf
 
-tickfreq(me::PerfPlugin) = 1e9 / me.avg_elapsed
+tickfreq(me::PerfPlugin) = 1e9 / me.avg_elapsed;
 
 # When the `tick()` hook is called, the plugin calculates the time difference to the stored timestamp
 # of the last call, and updates the exponential moving average:
 
-const alpha = 0.999
+const alpha = 1.0f-3
 
 function tick(me::PerfPlugin, app)
     ts = time_ns()
     diff = ts - me.last_call_ts
     me.last_call_ts = ts
-    me.avg_elapsed = alpha * me.avg_elapsed + (1.0 - alpha) * diff
+    me.avg_elapsed = alpha * Float32(diff) + (1.0f0 - alpha) * me.avg_elapsed 
 end;
 
 # ## The application
@@ -59,11 +59,11 @@ end;
 
 # The last step is to initialize the app, call the operation, and read out the performance measurement from the plugin:
 
-const app = App([PerfPlugin()], [tick])
+app = App([PerfPlugin()], [tick])
 tickerop(app)
-println("Average cycle time: $(@sprintf("%.2f", app.plugins[:perf].avg_elapsed)) nanoseconds, Frequency: $(@sprintf("%.2f", tickfreq(app.plugins[:perf]) / 1e6)) MHz")
+println("Average cycle time: $(@sprintf("%.2f", app.plugins[:perf].avg_elapsed)) nanoseconds, frequency: $(@sprintf("%.2f", tickfreq(app.plugins[:perf]) / 1e6)) MHz")
 
-# *That was on the CI. On an i7 7700K I typically get around 21.15ns / 47.3 MHz.* There is no overhead compared to a direct call
+# *That was on the CI. On an i7 7700K I typically get around 19.80ns / 50.52 MHz.* There is no overhead compared to a direct call
 # of the `tick(::PerfPlugin, ::Any)` method.
 #
 # You can find this example under `docs/examples/gettingstarted.jl` if you check out the [repo](https://github.com/tisztamo/Plugins.jl).

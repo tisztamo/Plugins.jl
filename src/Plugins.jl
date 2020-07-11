@@ -2,7 +2,7 @@ module Plugins
 
 import Base.length, Base.iterate, Base.get, Base.getindex
 
-export PluginStack, Plugin, hooks, hooklist, symbol, hook_cache, setup!, shutdown!
+export PluginStack, Plugin, hooks, hooklist, hook_cache, setup!, shutdown!
 
 """
     abstract type Plugin
@@ -39,11 +39,15 @@ Plugins.jl does not (yet) helps with this, application developers should do it m
 shutdown!(plugin::Plugin, sharedstate) = nothing
 
 """
-    PluginStack
+    PluginStack(plugins, hookfns = [])
 
-Holds all the plugins loaded into an application.
+Manages the plugins loaded into an application.
 
-Implements the iteration interface, and gives access using symbols, e.g. `pluginstack[:logger]`
+It provides fast access to the plugins by symbol, e.g. `pluginstack[:logger]`. Also implements the iteration interface.
+
+The pluginstack is created from a list of plugins, and optionally a list of hook functions. If hook functions are provided,
+the `hooks()`` function can be called to
+
 """
 mutable struct PluginStack
     plugins::Array{Plugin}
@@ -119,15 +123,28 @@ hooklist(sharedstate, hookfn) = hooklist(sharedstate.plugins, hookfn, sharedstat
 hooklist(stack::PluginStack, hookfn, sharedstate) = hooklist(stack.plugins, hookfn, sharedstate)
 
 """
-    function hooks(stack::PluginStack, rebuild = true)
+    hooks(sharedstate, rebuild = false)
+    hooks(pluginstack::PluginStack, sharedstate, rebuild = false)
+
+Create or get a hook cache for `stack` and `sharedstate`.
+
+The first form can be used when `pluginstack` is stored in `sharedstate.plugins` (the recommended pattern).
+
+When this function is called first time on a `PluginStack`, the hooks cache will be created by calling
+`hook_cache()`, and stored in `stack` for quick access later.
+
+The hook cache will be rebuilt if the `rebuild` argument is true.
 """
-function hooks(sharedstate, rebuild::Bool = false)
-    stack = sharedstate.plugins
+function hooks end
+
+function hooks(stack::PluginStack, sharedstate, rebuild::Bool = false)
     if isnothing(stack.hookcache) || rebuild
         stack.hookcache = hook_cache(stack.hookfns, sharedstate)
     end
     return stack.hookcache
 end
+
+hooks(sharedstate, rebuild::Bool = false) = hooks(sharedstate.plugins, sharedstate, rebuild)
 
 """
     hook_cache(hookfns, sharedstate)
