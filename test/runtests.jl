@@ -13,7 +13,8 @@ end
 mutable struct CounterPlugin <: Plugin
     hook1count::Int
     hook2count::Int
-    CounterPlugin() = new(0, 0)
+    hook3count::Int
+    CounterPlugin() = new(0, 0, 0)
 end
 symbol(::CounterPlugin) = :counter
 @inline hook1(plugin::CounterPlugin, framework) = begin
@@ -23,6 +24,11 @@ end
 
 hook2_handler(plugin::CounterPlugin, framework) = begin
     plugin.hook2count += 1
+    return false
+end
+
+@inline hook3(plugin::CounterPlugin, framework, p1, p2) = begin
+    plugin.hook3count += p2
     return false
 end
 
@@ -95,16 +101,14 @@ function op(app::App)
     @info "op: A sample operation on the app, involving hook1() calls in a semi-realistic setting."
     @info "op: $(length(counters)) CounterPlugins found, $(length(app.state.plugins)) plugins in total, each CounterPlugin incrementing a private counter."
 
-    start_hook1count = app.state.shared_counter
-    
     start_ts = time_ns()
     for i in 1:OP_CYCLES
-        app.hooks.hook1()
+        app.hooks.hook3(i, 1)
     end
     end_ts = time_ns()
 
     for i = 1:length(counters)
-        @test counters[i].hook1count == OP_CYCLES
+        @test counters[i].hook3count == OP_CYCLES
     end
 
     time_diff = end_ts - start_ts
@@ -251,9 +255,9 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
 
     @testset "Hook cache as type parameter" begin
         firstcounter = CounterPlugin()
-        counters = [CounterPlugin() for i=1:30]
+        counters = [CounterPlugin() for i=1:1]
         empties = [EmptyPlugin() for i=1:1000]
-        app = App([firstcounter, empties..., counters...], [hook1])
+        app = App([firstcounter, empties..., counters...], [hook3])
         op(app)
     end
 

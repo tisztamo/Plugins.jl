@@ -152,7 +152,7 @@ Create or get a hook cache for `stack` and `sharedstate`.
 The first form can be used when `pluginstack` is stored in `sharedstate.plugins` (the recommended pattern).
 
 When this function is called first time on a `PluginStack`, the hooks cache will be created by calling
-`hook_cache()`, and stored in `stack` for quick access later.
+`hook_cache()`, and stored in `pluginstack` for quick access later.
 
 The hook cache will be rebuilt if the `rebuild` argument is true, or if pluginstack was modified.
 """
