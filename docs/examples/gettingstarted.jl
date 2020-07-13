@@ -89,7 +89,7 @@ tickerop(app)
 println("Tick count: $(app.plugins[:counter].count)")
 println("Average cycle time: $(@sprintf("%.2f", app.plugins[:perf].avg_elapsed)) nanoseconds, frequency: $(@sprintf("%.2f", tickfreq(app.plugins[:perf]) / 1e6)) MHz")
 
-# *That was on the CI. On an i7 7700K I typically get around 20.40ns / 49.03 MHz.* There is no overhead compared to a direct call
+# *That was on the CI. On an i7 7700K I typically get around 19.95ns / 50.14 MHz.* There is no overhead compared to a direct call
 # of the manually merged `tick()` methods.
 #
 # You can find this example under `docs/examples/gettingstarted.jl` if you check out the [repo](https://github.com/tisztamo/Plugins.jl).

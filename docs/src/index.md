@@ -8,11 +8,11 @@ Plugins.jl helps by analyzing the plugins loaded into the system and generating 
 
 With Plugins.jl, execution of plugin code can be just as performant as a manually composed system. *Inlinable hook implementations will be merged into a single function body, and non-implementing plugins are skipped with zero overhead.*
 
-## Plugin-based architecture
+## Plugin-based architecture with Plugins.jl
 
 A plugin implements so-called hooks: functions that the system will call at specific points of its inner life. You can think of hooks as they were event handlers, where the event source is the "base system".
 
 The system is configured with an array of plugins. If multiple plugins implement the same hook, they will be called in their order, with any plugin able to halt the processing by simply returning `true`.
 
-Plugins have their own state, but they can access a shared state/configuration, and they can also publish an API by registering a symbol that other plugins can search for.
+Plugins can have their own state, but they can access a shared state/configuration, and they can also publish an API by registering a symbol that other plugins can search for.
 
