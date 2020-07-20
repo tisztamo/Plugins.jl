@@ -126,7 +126,7 @@ Plugins.setup!(plugin::LifeCycleTestPlugin, framework) = plugin.setupcalledwith 
 Plugins.shutdown!(plugin::LifeCycleTestPlugin, framework) = begin
     plugin.shutdowncalledwith = framework
     if framework === 42
-        throw("shutdown called with 42")
+        error("shutdown called with 42")
     end
 end
 deferred_init(plugin::Plugin, ::Any) = true
@@ -274,7 +274,12 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
 
         @test shutdown!(app.plugins, app).allok === true
         @test plugin.shutdowncalledwith === app
-        @test shutdown!(app.plugins, 42).allok === false
+        notallok = shutdown!(app.plugins, 42)
+        @show notallok
+        @test notallok.allok === false
+        @test (notallok.results[2] isa Tuple) === true
+        @test (notallok.results[2][1] isa Exception) === true
+        @test (notallok.results[2][2] isa Array{Union{Ptr{Nothing}, Base.InterpreterIP},1}) === true
         @test plugin.shutdowncalledwith === 42
     end
 

@@ -195,7 +195,7 @@ function create_lifecyclehook(op::Function)
                 push!(results, op(plugin, data))
             catch e
                 allok = false
-                push!(results, e)
+                push!(results, (e, catch_backtrace()))
             end
         end
         return (allok = allok, results = results)
