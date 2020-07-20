@@ -279,7 +279,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test notallok.allok === false
         @test (notallok.results[2] isa Tuple) === true
         @test (notallok.results[2][1] isa Exception) === true
-        @test (notallok.results[2][2] isa Array{Union{Ptr{Nothing}, Base.InterpreterIP},1}) === true
+        @test (stacktrace(notallok.results[2][2]) isa Array{StackTraces.StackFrame, 1}) === true
         @test plugin.shutdowncalledwith === 42
     end
 
