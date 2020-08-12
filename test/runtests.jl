@@ -244,13 +244,17 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
 
     @testset "Hook cache" begin
         firstcounter = CounterPlugin()
-        counters = [CounterPlugin() for i=1:30]
+        counters = [CounterPlugin() for i=1:99]
         empties = [EmptyPlugin() for i=1:1000]
 
-        simpleapp = SharedState(PluginStack([firstcounter, empties..., counters...], [hook1]), 0)
-        simpleapp_hooks = hooks(simpleapp)
-        simpleapp_hooks.hook1()
-        @test firstcounter.hook1count == 1
+        pluginarr = [firstcounter, empties..., counters...]
+        @info "Measuring time to first hook call with $(length(pluginarr)) plugins, $(length(counters) + 1) implementig the hook."
+        @time begin
+            simpleapp = SharedState(PluginStack(pluginarr, [hook1]), 0)
+            simpleapp_hooks = hooks(simpleapp)
+            simpleapp_hooks.hook1()
+            @test firstcounter.hook1count == 1
+        end
     end
 
     @testset "Hook cache as type parameter" begin
