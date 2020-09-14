@@ -3,6 +3,7 @@ import Plugins
 using Test
 
 abstract type AbstractState1 end
+Plugins.TemplateStyle(::Type{AbstractState1}) = Plugins.ImmutableStruct()
 abstract type AbstractState2 end
 
 struct Fielder1 <: Plugin end
@@ -13,7 +14,20 @@ Plugins.customfield(plugin::Fielder1, ::Type{AbstractState2}) = Plugins.fieldspe
 Plugins.customfield(plugin::Fielder2, ::Type{AbstractState1}) = Plugins.fieldspec(:field2_1, Dict{String, Any})
 Plugins.customfield(plugin::Fielder2, ::Type{AbstractState2}) = Plugins.fieldspec(:field2_2, Fielder2)
 
+
 abstract type AppState end
+
+struct CustomTemplate <: Plugins.TemplateStyle end
+Plugins.TemplateStyle(::Type{AppState}) = CustomTemplate()
+
+Plugins.type_template(::CustomTemplate, typename, parent_type) = quote
+    evaltest = true
+    mutable struct $typename <: $parent_type
+        :FIELDS
+    end;
+    $typename
+end
+
 Plugins.customfield(plugin::Fielder1, ::Type{AppState}) = Plugins.fieldspec("field1", Int64)
 Plugins.customfield(plugin::Fielder2, ::Type{AppState}) = Plugins.fieldspec("field2", Float64)
 
@@ -27,6 +41,8 @@ struct CustomFieldsApp{TCustomState}
 end
 
 @testset "Plugins.jl custom fields" begin
+    @test isnothing(Plugins.customfield(Fielder1(), AbstractArray)) == true
+
     stack = PluginStack([Fielder1(), Fielder2()])
     res1 = Plugins.customfield(stack, AbstractState1)
     @test res1.allok == true
@@ -41,6 +57,7 @@ end
     @test s1 === State1
     s1i = State1(42, Dict())
     @test s1i.field1_1 == 42
+    @test_throws Exception s1i.field1_1 = 43
     @test s1i.field2_1 isa Dict
 
     s2 = custom_type(stack, :State2, AbstractState2)
@@ -55,4 +72,5 @@ end
     app.state.field1 = 43
     @test app.state.field1 === 43
     @test_throws Exception app.state.field1 = "43"
+    @test evaltest == true
 end

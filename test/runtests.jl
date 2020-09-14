@@ -244,7 +244,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
 
     @testset "Hook cache" begin
         firstcounter = CounterPlugin()
-        counters = [CounterPlugin() for i=1:99]
+        counters = [CounterPlugin() for i=1:39]
         empties = [EmptyPlugin() for i=1:1000]
 
         pluginarr = [firstcounter, empties..., counters...]

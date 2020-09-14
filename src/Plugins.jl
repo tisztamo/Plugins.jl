@@ -185,13 +185,13 @@ Returns a NamedTuple with an entry for every handler.
 cache = hook_cache([hook1, hook2], app)
 cache.hook1()
 ```
-    
+
 """
 function hook_cache(handlers, sharedstate)
     return (;(nameof(hook) => hooklist(sharedstate, hook) for hook in handlers)...)
 end
 
-function create_lifecyclehook(op::Function) 
+function create_lifecyclehook(op::Function)
     return (stack::PluginStack, data) -> begin
         allok = true
         results = []
@@ -215,18 +215,46 @@ setup!(stack::PluginStack, sharedstate) = setup_hook!(stack, sharedstate)
 shutdown!(stack::PluginStack, sharedstate) = shutdown_hook!(stack, sharedstate)
 customfield(stack::PluginStack, abstract_type::Type) = customfield_hook(stack, abstract_type)
 
+abstract type TemplateStyle end
+struct ImmutableStruct <: TemplateStyle end
+struct MutableStruct <: TemplateStyle end
+
+TemplateStyle(::Type) = MutableStruct()
+
 fieldspec(name, parent_type::Type) = :($(Symbol(name))::$(Meta.parse(string(parent_type))))
 
-type_template(typename, parent_type) = quote
+type_template(::MutableStruct, typename, parent_type) = quote
     mutable struct $typename <: $parent_type
+        :FIELDS
     end;
     $typename
 end
 
+type_template(::ImmutableStruct, typename, parent_type) = quote
+    struct $typename <: $parent_type
+        :FIELDS
+    end;
+    $typename
+end
+
+function fill_fields!(template::Expr, fields)
+    found = findfirst(isequal(:(:FIELDS)), template.args)
+    if isnothing(found)
+        return !isnothing(findfirst(arg -> fill_fields!(arg, fields), template.args))
+    else
+        splice!(template.args, found, fields)
+        return true
+    end
+    return false
+end
+fill_fields!(_, _) = false
+
 function custom_type(stack::PluginStack, typename, parent_type, target_module = Main)
-    def = type_template(typename, parent_type)
+    def = type_template(TemplateStyle(parent_type), typename, parent_type)
     fields = customfield(stack, parent_type)
-    append!(def.args[2].args[3].args, fields.results)
+    if !fill_fields!(def, fields.results)
+        error("Unable to find :FIELDS mark in type template: $def")
+    end
     return Base.eval(target_module, def)
 end
 
