@@ -2,7 +2,10 @@ module Plugins
 
 import Base.length, Base.iterate, Base.get, Base.getindex
 
-export PluginStack, Plugin, hooks, hooklist, hook_cache, setup!, shutdown!
+export PluginStack, Plugin,
+    hooks, hooklist, hook_cache,
+    setup!, shutdown!, customfield,
+    custom_type
 
 """
     abstract type Plugin
@@ -37,6 +40,8 @@ This lifecycle hook should be called when the application unloads a plugin, e.g.
 Plugins.jl does not (yet) helps with this, application developers should do it manually.
 """
 shutdown!(plugin::Plugin, sharedstate) = nothing
+
+customfield(plugin::Plugin, abstract_type::Type) = nothing
 
 """
     PluginStack(plugins, hookfns = [])
@@ -202,10 +207,27 @@ function create_lifecyclehook(op::Function)
     end
 end
 
-setup_stack! = create_lifecyclehook(setup!)
-shutdown_stack! = create_lifecyclehook(shutdown!)
+setup_hook! = create_lifecyclehook(setup!)
+shutdown_hook! = create_lifecyclehook(shutdown!)
+customfield_hook = create_lifecyclehook(customfield)
 
-setup!(stack::PluginStack, sharedstate) = setup_stack!(stack, sharedstate)
-shutdown!(stack::PluginStack, sharedstate) = shutdown_stack!(stack, sharedstate)
+setup!(stack::PluginStack, sharedstate) = setup_hook!(stack, sharedstate)
+shutdown!(stack::PluginStack, sharedstate) = shutdown_hook!(stack, sharedstate)
+customfield(stack::PluginStack, abstract_type::Type) = customfield_hook(stack, abstract_type)
+
+fieldspec(name, parent_type::Type) = :($(Symbol(name))::$(Meta.parse(string(parent_type))))
+
+type_template(typename, parent_type) = quote
+    mutable struct $typename <: $parent_type
+    end;
+    $typename
+end
+
+function custom_type(stack::PluginStack, typename, parent_type, target_module = Main)
+    def = type_template(typename, parent_type)
+    fields = customfield(stack, parent_type)
+    append!(def.args[2].args[3].args, fields.results)
+    return Base.eval(target_module, def)
+end
 
 end # module

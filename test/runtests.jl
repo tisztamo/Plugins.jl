@@ -132,7 +132,7 @@ end
 deferred_init(plugin::Plugin, ::Any) = true
 deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith = data
 
-@testset "Plugins.jl" begin
+@testset "Plugins.jl basics" begin
     @testset "Plugin chain" begin
         innerplugin = EmptyPlugin()
         counter = CounterPlugin()
@@ -354,3 +354,5 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test c5.hook1count == 1
     end
 end
+
+include("customfields.jl")
