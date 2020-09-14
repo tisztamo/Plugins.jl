@@ -245,7 +245,6 @@ function fill_fields!(template::Expr, fields)
         splice!(template.args, found, fields)
         return true
     end
-    return false
 end
 fill_fields!(_, _) = false
 
