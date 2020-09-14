@@ -31,13 +31,17 @@ end
 Plugins.customfield(plugin::Fielder1, ::Type{AppState}) = Plugins.fieldspec("field1", Int64)
 Plugins.customfield(plugin::Fielder2, ::Type{AppState}) = Plugins.fieldspec("field2", Float64)
 
-struct CustomFieldsApp{TCustomState}
+mutable struct CustomFieldsApp{TCustomState}
     state::TCustomState
     function CustomFieldsApp(plugins, hookfns, stateargs...)
         stack = PluginStack(plugins, hookfns)
         state_type = custom_type(stack, :AppStateImpl, AppState)
         return new{state_type}(Base.invokelatest(state_type, stateargs...))
     end
+end
+
+function testinjected(app::CustomFieldsApp{TState}, stateargs...) where TState
+    app.state = TState(stateargs...) # No need to invokelatest
 end
 
 
@@ -80,13 +84,15 @@ end
     @test s2i.field1_2 == 42
     @test s2i.field2_2 isa Fielder2
 
-    app = CustomFieldsApp([Fielder1(), Fielder2()], [], 42, 42.0)
+    @show app = CustomFieldsApp([Fielder1(), Fielder2()], [], 42, 42.0)
     @test app.state.field1 === 42
     @test app.state.field2 === 42.0
     app.state.field1 = 43
     @test app.state.field1 === 43
     @test_throws Exception app.state.field1 = "43"
     @test evaltest == true
+    testinjected(app, 43, 43.0)
+    @test app.state.field1 === 43
 
     errstack = PluginStack([])
     @test_throws Exception custom_type(errstack, :ErrState2, ErrState)
