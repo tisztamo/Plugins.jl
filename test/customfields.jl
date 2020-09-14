@@ -40,6 +40,20 @@ struct CustomFieldsApp{TCustomState}
     end
 end
 
+
+abstract type ErrState end
+
+struct ErrTemplate <: Plugins.TemplateStyle end
+Plugins.TemplateStyle(::Type{ErrState}) = ErrTemplate()
+
+Plugins.type_template(::ErrTemplate, typename, parent_type) = quote
+    evaltest = true
+    mutable struct $typename <: $parent_type
+        :MISSING
+    end;
+    $typename
+end
+
 @testset "Plugins.jl custom fields" begin
     @test isnothing(Plugins.customfield(Fielder1(), AbstractArray)) == true
 
@@ -73,4 +87,7 @@ end
     @test app.state.field1 === 43
     @test_throws Exception app.state.field1 = "43"
     @test evaltest == true
+
+    errstack = PluginStack([])
+    @test_throws Exception custom_type(errstack, :ErrState2, ErrState)
 end
