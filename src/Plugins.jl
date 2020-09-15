@@ -4,8 +4,7 @@ import Base.length, Base.iterate, Base.get, Base.getindex
 
 export PluginStack, Plugin,
     hooks, hooklist, hook_cache,
-    setup!, shutdown!, customfield,
-    custom_type
+    customtype
 
 """
     abstract type Plugin
@@ -221,39 +220,36 @@ struct MutableStruct <: TemplateStyle end
 
 TemplateStyle(::Type) = MutableStruct()
 
-fieldspec(name, parent_type::Type) = :($(Symbol(name))::$(Meta.parse(string(parent_type))))
+struct FieldSpec
+    name::Symbol
+    type::Type
+end
+FieldSpec(name, type::Type) = FieldSpec(Symbol(name), type)
 
-type_template(::MutableStruct, typename, parent_type) = quote
+structfield(spec::FieldSpec) = :($(spec.name)::$(Meta.parse(string(spec.type))))
+
+# fieldspecs to struct-interpolable Expr
+function structfields(fields)
+    return Expr(:block, map(structfield, fields)...)
+end
+
+typedef(::MutableStruct, typename, parent_type, fields) = quote
     mutable struct $typename <: $parent_type
-        :FIELDS
+        $(structfields(fields))
     end;
     $typename
 end
 
-type_template(::ImmutableStruct, typename, parent_type) = quote
+typedef(::ImmutableStruct, typename, parent_type, fields) = quote
     struct $typename <: $parent_type
-        :FIELDS
+        $(structfields(fields))
     end;
     $typename
 end
 
-function fill_fields!(template::Expr, fields)
-    found = findfirst(isequal(:(:FIELDS)), template.args)
-    if isnothing(found)
-        return !isnothing(findfirst(arg -> fill_fields!(arg, fields), template.args))
-    else
-        splice!(template.args, found, fields)
-        return true
-    end
-end
-fill_fields!(_, _) = false
-
-function custom_type(stack::PluginStack, typename, parent_type, target_module = Main)
-    def = type_template(TemplateStyle(parent_type), typename, parent_type)
-    fields = customfield(stack, parent_type)
-    if !fill_fields!(def, fields.results)
-        error("Unable to find :FIELDS mark in type template: $def")
-    end
+function customtype(stack::PluginStack, typename, parent_type, target_module = Main)
+    fields = customfield(stack, parent_type).results
+    def = typedef(TemplateStyle(parent_type), typename, parent_type, fields)
     return Base.eval(target_module, def)
 end
 
