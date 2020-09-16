@@ -223,37 +223,55 @@ TemplateStyle(::Type) = MutableStruct()
 struct FieldSpec
     name::Symbol
     type::Type
+    constructor::Union{Function, DataType}
 end
-FieldSpec(name, type::Type) = FieldSpec(Symbol(name), type)
+FieldSpec(name, type::Type, constructor::Union{Function, DataType} = type) = FieldSpec(Symbol(name), type, constructor)
 
 structfield(spec::FieldSpec) = :($(spec.name)::$(Meta.parse(string(spec.type))))
 
-# fieldspecs to struct-interpolable Expr
-function structfields(fields)
-    return Expr(:block, map(structfield, fields)...)
+struct TypeSpec
+    name::Symbol
+    mod::Module
+    parent_type::Type
+    fields::Vector{FieldSpec}
 end
 
-typedef(::MutableStruct, typename, parent_type, fields) = quote
-    mutable struct $typename <: $parent_type
-        $(structfields(fields))
+function structfields(spec::TypeSpec)
+    return Expr(:block, map(structfield, spec.fields)...)
+end
+
+function default_constructor(spec)
+    fieldcalls = map(field -> :($(field.constructor)(params...)), spec.fields)
+    retval = :($(spec.name)(params...) = $(Expr(:call, spec.name, fieldcalls...)))
+    return retval
+end
+
+function typedef end
+
+typedef(::MutableStruct, spec::TypeSpec) = quote
+    mutable struct $(spec.name) <: $(spec.parent_type)
+        $(structfields(spec))
     end;
-    $typename
+    $(default_constructor(spec))
+    $(spec.name)
 end
 
-typedef(::ImmutableStruct, typename, parent_type, fields) = quote
-    struct $typename <: $parent_type
-        $(structfields(fields))
+typedef(::ImmutableStruct, spec::TypeSpec) = quote
+    struct $(spec.name) <: $(spec.parent_type)
+        $(structfields(spec))
     end;
-    $typename
+    $(default_constructor(spec))
+    $(spec.name)
 end
 
-function customtype(stack::PluginStack, typename, parent_type = Any, target_module = Main)
+function customtype(stack::PluginStack, typename::Symbol, parent_type::Type = Any, target_module::Module = Main)
     hookres = customfield(stack, parent_type)
     if !hookres.allok
         throw(ErrorException("Cannot define custom type, a plugin throwed an error: $hookres"))
     end
     fields = hookres.results
-    def = typedef(TemplateStyle(parent_type), typename, parent_type, fields)
+    spec = TypeSpec(typename, target_module, parent_type, fields)
+    def = typedef(TemplateStyle(parent_type), spec)
     return Base.eval(target_module, def)
 end
 
