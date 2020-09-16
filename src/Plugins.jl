@@ -247,8 +247,12 @@ typedef(::ImmutableStruct, typename, parent_type, fields) = quote
     $typename
 end
 
-function customtype(stack::PluginStack, typename, parent_type, target_module = Main)
-    fields = customfield(stack, parent_type).results
+function customtype(stack::PluginStack, typename, parent_type = Any, target_module = Main)
+    hookres = customfield(stack, parent_type)
+    if !hookres.allok
+        throw(ErrorException("Cannot define custom type, a plugin throwed an error: $hookres"))
+    end
+    fields = hookres.results
     def = typedef(TemplateStyle(parent_type), typename, parent_type, fields)
     return Base.eval(target_module, def)
 end

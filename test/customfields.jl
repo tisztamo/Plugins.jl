@@ -5,6 +5,7 @@ using Test
 abstract type AbstractState1 end
 Plugins.TemplateStyle(::Type{AbstractState1}) = Plugins.ImmutableStruct()
 abstract type AbstractState2 end
+abstract type AbstractState3 end
 
 struct Fielder1 <: Plugin end
 struct Fielder2 <: Plugin end
@@ -14,6 +15,7 @@ Plugins.customfield(plugin::Fielder1, ::Type{AbstractState2}) = Plugins.FieldSpe
 Plugins.customfield(plugin::Fielder2, ::Type{AbstractState1}) = Plugins.FieldSpec(:field2_1, Dict{String, Any})
 Plugins.customfield(plugin::Fielder2, ::Type{AbstractState2}) = Plugins.FieldSpec(:field2_2, Fielder2)
 
+Plugins.customfield(plugin::Fielder2, ::Type{AbstractState3}) = Plugins.FieldSpec(:field2_2, "this_should_throw")
 
 abstract type AppState end
 
@@ -84,6 +86,8 @@ end
     s2i = State2(42, Fielder2())
     @test s2i.field1_2 == 42
     @test s2i.field2_2 isa Fielder2
+
+    @test_throws Exception customtype(stack, :State2, AbstractState3)
 
     @show app = CustomFieldsApp([Fielder1(), Fielder2()], [], 42, 42.0)
     @test app.state.field1 === 42
