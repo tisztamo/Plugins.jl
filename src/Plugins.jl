@@ -256,12 +256,10 @@ typedef(::MutableStruct, spec::TypeSpec) = quote
     $(spec.name)
 end
 
-typedef(::ImmutableStruct, spec::TypeSpec) = quote
-    struct $(spec.name) <: $(spec.parent_type)
-        $(structfields(spec))
-    end;
-    $(default_constructor(spec))
-    $(spec.name)
+typedef(::ImmutableStruct, spec::TypeSpec) = begin
+    mutabledef = typedef(MutableStruct(), spec)
+    mutabledef.args[2].args[1] = false
+    return mutabledef
 end
 
 function customtype(stack::PluginStack, typename::Symbol, parent_type::Type = Any, target_module::Module = Main)
