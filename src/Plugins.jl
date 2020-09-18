@@ -162,14 +162,14 @@ The hook cache will be rebuilt if the `rebuild` argument is true, or if pluginst
 """
 function hooks end
 
-function hooks(stack::PluginStack, sharedstate, rebuild::Bool = false)
+@inline function hooks(stack::PluginStack, sharedstate, rebuild::Bool = false)
     if isnothing(stack.hookcache) || rebuild
         stack.hookcache = hook_cache(stack.hookfns, sharedstate)
     end
     return stack.hookcache
 end
 
-hooks(sharedstate, rebuild::Bool = false) = hooks(sharedstate.plugins, sharedstate, rebuild)
+@inline hooks(sharedstate, rebuild::Bool = false) = hooks(sharedstate.plugins, sharedstate, rebuild)
 
 """
     hook_cache(hookfns, sharedstate)
@@ -227,7 +227,7 @@ struct FieldSpec
 end
 FieldSpec(name, type::Type, constructor::Union{Function, DataType} = type) = FieldSpec(Symbol(name), type, constructor)
 
-structfield(spec::FieldSpec) = :($(spec.name)::$(Meta.parse(string(spec.type))))
+@inline structfield(spec::FieldSpec) = :($(spec.name)::$(Meta.parse(string(spec.type))))
 
 struct TypeSpec
     name::Symbol
@@ -267,7 +267,7 @@ function customtype(stack::PluginStack, typename::Symbol, parent_type::Type = An
     if !hookres.allok
         throw(ErrorException("Cannot define custom type, a plugin throwed an error: $hookres"))
     end
-    fields = hookres.results
+    fields = filter(f -> !isnothing(f), hookres.results)
     spec = TypeSpec(typename, target_module, parent_type, fields)
     def = typedef(TemplateStyle(parent_type), spec)
     return Base.eval(target_module, def)
