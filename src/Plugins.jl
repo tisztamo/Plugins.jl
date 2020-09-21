@@ -21,14 +21,14 @@ Return the unique Symbol of this plugin if it exports an API to other plugins.
 symbol(plugin::Plugin) = :nothing
 
 """
-    setup!(plugin, sharedstate)
+    setup!(plugin, args...)
 
 Initialize the plugin with the given shared state.
 
 This lifecycle hook should be called when the application loads a plugin. Plugins.jl does not (yet) helps with this,
 application developers should do it manually, right after the PluginStack was created, before the hook_cache() call.
 """
-setup!(plugin::Plugin, sharedstate) = nothing
+setup!(plugin::Plugin, args...) = nothing
 
 """
     shutdown!(plugin, sharedstate)
@@ -38,9 +38,9 @@ Shut down the plugin.
 This lifecycle hook should be called when the application unloads a plugin, e.g. before the application exits.
 Plugins.jl does not (yet) helps with this, application developers should do it manually.
 """
-shutdown!(plugin::Plugin, sharedstate) = nothing
+shutdown!(plugin::Plugin, args...) = nothing
 
-customfield(plugin::Plugin, abstract_type::Type) = nothing
+customfield(plugin::Plugin, abstract_type::Type, args...) = nothing
 
 """
     PluginStack(plugins, hookfns = [])
@@ -58,27 +58,26 @@ mutable struct PluginStack
     hookfns
     symbolcache::Dict{Symbol, Plugin}
     hookcache::Union{NamedTuple, Nothing}
-    PluginStack(plugins, hookfns = []) = new(plugins, hookfns, symbolcache(plugins), nothing)
+    PluginStack(plugins, hookfns = []) = begin
+        stack = new(plugins, hookfns, symbolcache(plugins), nothing)
+        rebuild_cache!(stack)
+        return stack
+    end
 end
 
 symbolcache(plugins) = Dict([(symbol(plugin), plugin) for plugin in plugins])
-
-function updated!(stack::PluginStack)
-    stack.symbolcache = symbolcache(stack.plugins)
-    stack.hookcache = nothing
-end
-
-function update!(stack::PluginStack, op, args...)
-    retval = op(stack.plugins, args...)
-    updated!(stack)
-    return retval
-end
 
 Base.push!(stack::PluginStack, items...) = update!(stack, Base.push!, items...)
 Base.pushfirst!(stack::PluginStack, items...) = update!(stack, Base.pushfirst!, items...)
 Base.pop!(stack::PluginStack, items...) = update!(stack, Base.pop!, items...)
 Base.popfirst!(stack::PluginStack, items...) = update!(stack, Base.popfirst!, items...)
 Base.empty!(stack::PluginStack, items...) = update!(stack, Base.empty!, items...)
+
+function update!(stack::PluginStack, op, args...)
+    retval = op(stack.plugins, args...)
+    rebuild_cache!(stack)
+    return retval
+end
 
 Base.isempty(stack::PluginStack) = Base.isempty(stack.plugins)
 Base.length(stack::PluginStack) = length(stack.plugins)
@@ -100,17 +99,16 @@ You can get a HookList by calling `hooklist()` directly, or using `hooks()`.
 The `HookList` can be called with a `::TSharedState` and an arbitrary number of extra arguments. If any of the
 plugins referenced in the list fails to handle the extra arguments, the call will raise a `MethodError`
 """
-struct HookList{TNext, THandler, TPlugin, TSharedState}
+struct HookList{TNext, THandler, TPlugin}
     next::TNext
     handler::THandler
     plugin::TPlugin
-    sharedstate::TSharedState
 end
 
-HookListTerminal = HookList{Nothing, Nothing, Nothing, Nothing}
+HookListTerminal = HookList{Nothing, Nothing, Nothing}
 
 @inline function (hook::HookList)(params...)::Bool
-    if hook.handler(hook.plugin, hook.sharedstate, params...) !== true
+    if hook.handler(hook.plugin, params...) !== true
         return hook.next(params...)
     end
     return true
@@ -122,11 +120,11 @@ length(l::HookListTerminal) = 0
 length(l::HookList) = 1 + length(l.next)
 
 iterate(l::HookList) = (l, l.next)
-iterate(l::HookList, state) = isnothing(state) ? nothing : (state, state.next)
-iterate(l::HookList, state::HookListTerminal) = nothing
+iterate(::HookList, state) = isnothing(state) ? nothing : (state, state.next)
+iterate(::HookList, ::HookListTerminal) = nothing
 
 """
-    function hooklist(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
+    function hooklist(plugins, hookfn)
 
 Create a HookList which allows fast, inlinable call to the merged implementations of `hookfn` for `TSharedState`
 by the given plugins.
@@ -134,61 +132,59 @@ by the given plugins.
 A plugin of type `TPlugin` found in plugins will be referenced in the resulting HookList if there is a method
 with the following signature: `hookfn(::TPlugin, ::TSharedState, ...)`
 """
-function hooklist(plugins, hookfn, sharedstate::TSharedState) where {TSharedState}
+function hooklist(plugins, hookfn)
     if length(plugins) == 0
-        return HookListTerminal(nothing, nothing, nothing, nothing)
+        return HookListTerminal(nothing, nothing, nothing)
     end
     plugin = plugins[1]
-    if length(methods(hookfn, (typeof(plugin), TSharedState, Vararg{Any}))) > 0
-        return HookList(hooklist(plugins[2:end], hookfn, sharedstate), hookfn, plugin, sharedstate)
+    if length(methods(hookfn, (typeof(plugin), Vararg{Any}))) > 0
+        return HookList(hooklist(plugins[2:end], hookfn), hookfn, plugin)
     end
-    return hooklist(plugins[2:end], hookfn, sharedstate)
+    return hooklist(plugins[2:end], hookfn)
 end
-hooklist(sharedstate, hookfn) = hooklist(sharedstate.plugins, hookfn, sharedstate)
-hooklist(stack::PluginStack, hookfn, sharedstate) = hooklist(stack.plugins, hookfn, sharedstate)
+hooklist(stack::PluginStack, hookfn) = hooklist(stack.plugins, hookfn)
 
 """
-    hooks(sharedstate, rebuild = false)
-    hooks(pluginstack::PluginStack, sharedstate, rebuild = false)
+    hooks(app)
+    hooks(pluginstack::PluginStack)
 
-Create or get a hook cache for `stack` and `sharedstate`.
+Create or get a hook cache for `stack`.
 
-The first form can be used when `pluginstack` is stored in `sharedstate.plugins` (the recommended pattern).
+The first form can be used when `pluginstack` is stored in `app.plugins` (the recommended pattern).
 
 When this function is called first time on a `PluginStack`, the hooks cache will be created by calling
 `hook_cache()`, and stored in `pluginstack` for quick access later.
-
-The hook cache will be rebuilt if the `rebuild` argument is true, or if pluginstack was modified.
 """
 function hooks end
 
-@inline function hooks(stack::PluginStack, sharedstate, rebuild::Bool = false)
-    if isnothing(stack.hookcache) || rebuild
-        stack.hookcache = hook_cache(stack.hookfns, sharedstate)
-    end
-    return stack.hookcache
+@inline hooks(app) = hooks(app.plugins)
+@inline hooks(stack::PluginStack) = stack.hookcache
+
+function rebuild_cache!(stack::PluginStack)
+    stack.symbolcache = symbolcache(stack.plugins)
+    stack.hookcache = hook_cache(stack)
 end
 
-@inline hooks(sharedstate, rebuild::Bool = false) = hooks(sharedstate.plugins, sharedstate, rebuild)
-
 """
-    hook_cache(hookfns, sharedstate)
+    hook_cache(stack::PluginStack, hookfns)
+    hook_cache(plugins, hookfns)
 
-Create a cache of `HookList`s from the list of hook functions.
+Create a cache of `HookList`s for a PluginStack or from lists of plugins and hook functions.
 
 Returns a NamedTuple with an entry for every handler.
 
 # Examples
 
 ```julia
-cache = hook_cache([hook1, hook2], app)
+cache = hook_cache([Plugin1(), Plugin2()], [hook1, hook2])
 cache.hook1()
 ```
 
 """
-function hook_cache(handlers, sharedstate)
-    return (;(nameof(hook) => hooklist(sharedstate, hook) for hook in handlers)...)
+function hook_cache(plugins, hookfns)
+    return (;(nameof(hook) => hooklist(plugins, hook) for hook in hookfns)...)
 end
+hook_cache(stack::PluginStack) = hook_cache(stack.plugins, stack.hookfns)
 
 function create_lifecyclehook(op::Function)
     return (stack::PluginStack, data) -> begin
