@@ -274,6 +274,7 @@ function customtype(
     fields = filter(f -> !isnothing(f), hookres.results)
     spec = TypeSpec(typename, parent_type, fields, params, target_module)
     def = typedef(TemplateStyle(parent_type), spec)
+    @debug "typedef: $def"
     return Base.eval(target_module, def)
 end
 
