@@ -69,11 +69,11 @@ end
     @test isnothing(Plugins.customfield(Fielder1(), AbstractArray)) == true
 
     stack = PluginStack([Fielder1(), Fielder2()])
-    res1 = Plugins.customfield(stack, AbstractState1)
+    res1 = Plugins.customfields(stack, AbstractState1)
     @test res1.allok == true
     @test res1.results[1] == Plugins.FieldSpec(:field1_1, Int64, _numberinit)
     @test res1.results[2] == Plugins.FieldSpec(:field2_1, Dict{String, Any}, _dict)
-    res2 = Plugins.customfield(stack, AbstractState2)
+    res2 = Plugins.customfields(stack, AbstractState2)
     @test res2.allok == true
     @test res2.results[1] == Plugins.FieldSpec(:field1_2, Any, _any)
     @test res2.results[2] == Plugins.FieldSpec(:field2_2, Fielder2)
@@ -84,7 +84,7 @@ end
     @test s1i.field1_1 == 0
     @test_throws Exception s1i.field1_1 = 43
     @test s1i.field2_1 isa Dict
-    
+
     s1i2 = State1()
     @test s1i2.field1_1 == 0
     @test_throws Exception s1i2.field1_1 = 43
@@ -110,7 +110,7 @@ end
 
     @test_throws Exception customtype(stack, :State2, AbstractState3)
 
-    @show app = CustomFieldsApp([Fielder1(), Fielder2()], [], 0, 0.0)
+    app = CustomFieldsApp([Fielder1(), Fielder2()], [], 0, 0.0)
     @test app.state.field1 === 0
     @test app.state.field2 === 0.0
     app.state.field1 = 43
@@ -125,4 +125,12 @@ end
 
     errstack = PluginStack([])
     @test_throws Exception customtype(errstack, :ErrState2, ErrState)
+
+    # Parametetric type
+    st1 = customtype(stack, :StateT1, AbstractState1, [:T1])
+    @test typeof(StateT1) === UnionAll
+    st1i = StateT1{Int}(0, Dict())
+    @test st1i.field1_1 == 0
+    @test_throws Exception st1i.field1_1 = 43
+    @test st1i.field2_1 isa Dict
 end

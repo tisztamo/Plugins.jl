@@ -87,7 +87,7 @@ Base.iterate(stack::PluginStack, state) = iterate(stack.plugins, state)
 Base.get(stack::PluginStack, key::Symbol, default=nothing) = get(stack.symbolcache, key, default)
 Base.getindex(stack::PluginStack, idx) = getindex(stack.plugins, idx)
 Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
-Base.setindex!(stack::PluginStack, params...) = update!(stack, setindex!, params...)
+Base.setindex!(stack::PluginStack, args...) = update!(stack, setindex!, args...)
 
 """
     HookList{TNext, THandler, TPlugin, TSharedState}
@@ -107,9 +107,9 @@ end
 
 HookListTerminal = HookList{Nothing, Nothing, Nothing}
 
-@inline function (hook::HookList)(params...)::Bool
-    if hook.handler(hook.plugin, params...) !== true
-        return hook.next(params...)
+@inline function (hook::HookList)(args...)::Bool
+    if hook.handler(hook.plugin, args...) !== true
+        return hook.next(args...)
     end
     return true
 end
@@ -208,7 +208,7 @@ customfield_hook = create_lifecyclehook(customfield)
 
 setup!(stack::PluginStack, sharedstate) = setup_hook!(stack, sharedstate)
 shutdown!(stack::PluginStack, sharedstate) = shutdown_hook!(stack, sharedstate)
-customfield(stack::PluginStack, abstract_type::Type) = customfield_hook(stack, abstract_type)
+customfields(stack::PluginStack, abstract_type::Type) = customfield_hook(stack, abstract_type)
 
 abstract type TemplateStyle end
 struct ImmutableStruct <: TemplateStyle end
@@ -227,25 +227,27 @@ FieldSpec(name, type::Type, constructor::Union{Function, DataType} = type) = Fie
 
 struct TypeSpec
     name::Symbol
-    mod::Module
     parent_type::Type
     fields::Vector{FieldSpec}
+    params::Vector{Symbol}
+    mod::Module
 end
 
 function structfields(spec::TypeSpec)
     return Expr(:block, map(structfield, spec.fields)...)
 end
 
+fieldcalls(spec) = map(field -> :($(field.constructor)(args...)), spec.fields)
+
 function default_constructor(spec)
-    fieldcalls = map(field -> :($(field.constructor)(params...)), spec.fields)
-    retval = :($(spec.name)(params...) = $(Expr(:call, spec.name, fieldcalls...)))
+    retval = :($(spec.name)(args...) = $(Expr(:call, spec.name, fieldcalls(spec)...)))
     return retval
 end
 
 function typedef end
 
 typedef(::MutableStruct, spec::TypeSpec) = quote
-    mutable struct $(spec.name) <: $(spec.parent_type)
+    mutable struct $(spec.name){$(spec.params...)} <: $(spec.parent_type)
         $(structfields(spec))
     end;
     $(default_constructor(spec))
@@ -258,13 +260,19 @@ typedef(::ImmutableStruct, spec::TypeSpec) = begin
     return mutabledef
 end
 
-function customtype(stack::PluginStack, typename::Symbol, parent_type::Type = Any, target_module::Module = Main)
-    hookres = customfield(stack, parent_type)
+function customtype(
+    stack::PluginStack,
+    typename::Symbol,
+    parent_type::Type = Any,
+    params::Vector{Symbol} = Symbol[],
+    target_module::Module = Main
+    )
+    hookres = customfields(stack, parent_type)
     if !hookres.allok
         throw(ErrorException("Cannot define custom type, a plugin throwed an error: $hookres"))
     end
     fields = filter(f -> !isnothing(f), hookres.results)
-    spec = TypeSpec(typename, target_module, parent_type, fields)
+    spec = TypeSpec(typename, parent_type, fields, params, target_module)
     def = typedef(TemplateStyle(parent_type), spec)
     return Base.eval(target_module, def)
 end
