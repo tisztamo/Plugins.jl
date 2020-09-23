@@ -237,10 +237,10 @@ function structfields(spec::TypeSpec)
     return Expr(:block, map(structfield, spec.fields)...)
 end
 
-fieldcalls(spec) = map(field -> :($(field.constructor)(args...)), spec.fields)
+fieldcalls(spec) = map(field -> :($(field.constructor)(args...; kwargs...)), spec.fields)
 
 function default_constructor(spec)
-    retval = :($(spec.name)(args...) = $(Expr(:call, spec.name, fieldcalls(spec)...)))
+    retval = :($(spec.name)(args...; kwargs...) = $(Expr(:call, spec.name, fieldcalls(spec)...)))
     return retval
 end
 
