@@ -187,12 +187,12 @@ end
 hook_cache(stack::PluginStack) = hook_cache(stack.plugins, stack.hookfns)
 
 function create_lifecyclehook(op::Function)
-    return (stack::PluginStack, data) -> begin
+    return (stack::PluginStack, data...) -> begin
         allok = true
         results = []
         for plugin in stack.plugins
             try
-                push!(results, op(plugin, data))
+                push!(results, op(plugin, data...))
             catch e
                 allok = false
                 push!(results, (e, catch_backtrace()))
