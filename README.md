@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.com/tisztamo/Plugins.jl.svg?branch=master)](https://travis-ci.com/tisztamo/Plugins.jl)
 [![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
-![maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)
+![experimental](https://img.shields.io/badge/lifecycle-experimental-blue.svg)
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://tisztamo.github.io/Plugins.jl/dev)
 
