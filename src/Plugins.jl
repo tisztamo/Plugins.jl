@@ -210,12 +210,12 @@ function create_lifecyclehook(op::Function)
     return (stack::PluginStack, data...) -> begin
         allok = true
         results = []
-        for plugin in stack.plugins
+        for plugin in reverse(stack.plugins)
             try
-                push!(results, op(plugin, data...))
+                pushfirst!(results, op(plugin, data...))
             catch e
                 allok = false
-                push!(results, (e, catch_backtrace()))
+                pushfirst!(results, (e, catch_backtrace()))
             end
         end
         return (allok = allok, results = results)
