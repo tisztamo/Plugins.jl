@@ -1,6 +1,6 @@
 # Plugins
 
-### Build flexible architectures without compromising performance or maintainability!
+### Plain old callbacks in new cloak.
 
 [![Build Status](https://travis-ci.com/tisztamo/Plugins.jl.svg?branch=master)](https://travis-ci.com/tisztamo/Plugins.jl)
 [![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
