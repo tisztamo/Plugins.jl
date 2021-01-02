@@ -1,6 +1,6 @@
 # Plugins
 
-### Plain old callbacks in new cloak.
+### Plain Old Callbacks in new Cloak.
 
 [![Build Status](https://travis-ci.com/tisztamo/Plugins.jl.svg?branch=master)](https://travis-ci.com/tisztamo/Plugins.jl)
 [![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
