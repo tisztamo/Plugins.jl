@@ -21,11 +21,11 @@ Return the unique Symbol of this plugin if it exports an API to other plugins.
 symbol(plugin::Plugin) = :nothing
 
 """
-    setup!(plugin, args...)
+    setup!(plugin, deps, args...)
 
-Initialize the plugin with the given shared state.
+Initialize the plugin with the given dependencies and arguments (e.g. shared state).
 
-This lifecycle hook should be called when the application loads a plugin. Plugins.jl does not (yet) helps with this,
+This lifecycle hook will be called when the application loads a plugin. Plugins.jl does not (yet) helps with this,
 application developers should do it manually, right after the PluginStack was created, before the hook_cache() call.
 """
 setup!(plugin::Plugin, args...) = nothing
@@ -35,7 +35,7 @@ setup!(plugin::Plugin, args...) = nothing
 
 Shut down the plugin.
 
-This lifecycle hook should be called when the application unloads a plugin, e.g. before the application exits.
+This lifecycle hook will be called when the application unloads a plugin, e.g. before the application exits.
 Plugins.jl does not (yet) helps with this, application developers should do it manually.
 """
 shutdown!(plugin::Plugin, args...) = nothing
@@ -147,11 +147,11 @@ iterate(::HookList, ::HookListTerminal) = nothing
 """
     function hooklist(plugins, hookfn)
 
-Create a HookList which allows fast, inlinable call to the merged implementations of `hookfn` for `TSharedState`
+Create a HookList which allows fast, inlinable call to the merged implementations of `hookfn`
 by the given plugins.
 
 A plugin of type `TPlugin` found in plugins will be referenced in the resulting HookList if there is a method
-with the following signature: `hookfn(::TPlugin, ::TSharedState, ...)`
+that matches the following signature: `hookfn(::TPlugin, ...)`
 """
 function hooklist(plugins, hookfn)
     if length(plugins) == 0
@@ -377,5 +377,7 @@ function customtype(
     def = typedef(TemplateStyle(abstract_type), spec)
     return Base.eval(target_module, def)
 end
+
+include("deps.jl")
 
 end # module

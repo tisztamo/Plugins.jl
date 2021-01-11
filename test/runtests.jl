@@ -2,6 +2,8 @@ using Plugins
 import Plugins.symbol, Plugins.setup!, Plugins.setup!
 using Test
 
+include("deps.jl")
+
 struct Framework
     plugins
     Framework(plugins, hooks=[]) = new(PluginStack(plugins, hooks))
