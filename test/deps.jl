@@ -1,64 +1,101 @@
-abstract type Interface1 end
-struct Impl1 <: Interface1 end
+"""
+RootInterface is the root of an interface hierarchy.
+Interfaces are modelled with abstract types.
+"""
+abstract type RootInterface end
 
-abstract type SubInterface1 <: Interface1 end
-struct SubImpl1 <: SubInterface1 end
+"""
+Implementation is marked with subtyping the interface
+"""
+struct RootImpl <: RootInterface end
 
-abstract type SubSubInterface1 <: SubInterface1 end
-struct SubSubImpl1 <: SubSubInterface1 end
+"""
+Interfaces have single inheritance with extension semantics:
+An implementation of a subinterface is also the implementation
+of the superinterface.
+"""
+abstract type SubInterfaceLeft <: RootInterface end
+struct SubImplLeft <: SubInterfaceLeft end
 
-abstract type SubInterface2 <: Interface1 end
-struct SubImpl2 <: SubInterface2 end
+abstract type SubInterfaceRight <: RootInterface end
+struct SubImplRight <: SubInterfaceRight end
 
-@testset "deps: instantiating a single plugin" begin
-    @test_throws Any Plugins.instantiation_order([Interface1])
+abstract type SubSubInterfaceLeft <: SubInterfaceLeft end
+struct SubSubImplLeft <: SubSubInterfaceLeft end
+
+@testset "Finding implementations for single interfaces" begin
+    # Throws an error when the required interface or any of its dependencies
+    # is unimplemented
+    @test_throws Any Plugins.instantiation_order([RootInterface])
     @test_throws Any Plugins.instantiation_order([SubInterface2])
-    Plugins.register(Impl1)
-    @test Plugins.instantiation_order([Interface1]) == [Impl1]
+
+    # Registration is programmatic for now
+    Plugins.register(RootImpl)
+
+    # Finds the trivial implementation
+    @test Plugins.instantiation_order([RootInterface]) == [RootImpl]
     @test_throws Any Plugins.instantiation_order([SubInterface2])
-    Plugins.register(SubImpl1)
-    @test Plugins.instantiation_order([Interface1]) == [SubImpl1]
-    @test Plugins.instantiation_order([SubInterface1]) == [SubImpl1]
+
+    # Finds the most specific implementation, if multiple are available
+    Plugins.register(SubImplLeft)
+    @test Plugins.instantiation_order([RootInterface]) == [SubImplLeft]
+    @test Plugins.instantiation_order([SubInterfaceLeft]) == [SubImplLeft]
     @test_throws Any Plugins.instantiation_order([SubInterface2])
-    Plugins.register(SubImpl2)
-    @test Plugins.instantiation_order([Interface1])[1] <: Interface1
-    @test Plugins.instantiation_order([SubInterface1]) == [SubImpl1]
-    @test Plugins.instantiation_order([SubInterface2]) == [SubImpl2]
-    Plugins.register(SubSubImpl1)
-    @test Plugins.instantiation_order([Interface1])[1] <: Interface1
-    @test Plugins.instantiation_order([SubInterface1]) == [SubSubImpl1]
-    @test Plugins.instantiation_order([SubSubInterface1]) == [SubSubImpl1]
-    @test Plugins.instantiation_order([SubInterface2]) == [SubImpl2]
+
+    # If there are multiple most specific implementations, selects one undefinedly
+    Plugins.register(SubImplRight)
+    @test Plugins.instantiation_order([RootInterface])[1] <: RootInterface
+    
+    # Still works
+    @test Plugins.instantiation_order([SubInterfaceLeft]) == [SubImplLeft]
+    @test Plugins.instantiation_order([SubInterfaceRight]) == [SubImplRight]
+
+    # A two-level hierarchy also works as expected
+    Plugins.register(SubSubImplLeft)
+    @test Plugins.instantiation_order([RootInterface])[1] <: RootInterface
+    @test Plugins.instantiation_order([SubInterfaceLeft]) == [SubSubImplLeft]
+    @test Plugins.instantiation_order([SubSubInterfaceLeft]) == [SubSubImplLeft]
+    @test Plugins.instantiation_order([SubInterfaceRight]) == [SubImplRight]
 end
 
+# For checking permutation equivalence of type arrays, we sort them by type name.
 Base.isless(a::Type, b::Type) = isless(nameof(a), nameof(b))
 
+# ------------------------------------------------------------------------------------------
+
+"""
+A more realistic example is a small module structure with complex dependencies.
+Instantiated implementations receive instances of their dependencies as arguments
+to the constructor, and may also receive options through kwargs.
+"""
 abstract type MI1 end
 struct MImpl1 <: MI1
     x1
     x2
-    MImpl1(; x1=nothing, x2=nothing) = new(x1, x2)
+    MImpl1(; x1=nothing, x2=nothing, options...) = new(x1, x2)
 end
 
 abstract type MI2 end
 struct MImpl2 <: MI2
-    MImpl2(::MI1) = new()
+    MImpl2(::MI1; options...) = new()
 end
 
 abstract type MI3 end
-struct MImpl3 <: MI3 end
+struct MImpl3 <: MI3
+    MImpl3(::MI1; options...) = new()
+end
 
 abstract type MI4 end
 struct MImpl4 <: MI4
-    MImpl4(::MI1, ::MI2) = new()
+    MImpl4(::MI1, ::MI2; options...) = new()
 end
 
 abstract type MI5 end
 struct MImpl5 <: MI5
-    MImpl5(::MI4, ::MI2) = new()
+    MImpl5(::MI4, ::MI2; options...) = new()
 end
 
-@testset "deps: Multiple plugins" begin
+@testset "Dependencies are tracked down" begin
     Plugins.register(MImpl1)
     Plugins.register(MImpl2, [MImpl1])
     Plugins.register(MImpl3, [MI2])
@@ -73,24 +110,24 @@ end
 end
 
 @testset "Instantiation" begin
-    mi1 = Plugins.instantiate([MI1]; x1=42, x2=43)
+    @show mi1 = Plugins.instantiate([MI1]; x1=42, x2=43)
     @test length(mi1) == 1
     @test mi1[1] isa MImpl1
     @test mi1[1].x1 == 42
     @test mi1[1].x2 == 43
 
-    mi2 = Plugins.instantiate([MI1, MI2])
+    @show mi2 = Plugins.instantiate([MI1, MI2]; x1=42, plugins_tests_extraop=:plugins_tests_extraop)
     @test length(mi2) == 2
     @test mi2[1] isa MImpl1
     @test mi2[2] isa MImpl2
 
-    mi3 = Plugins.instantiate([MI1, MI4])
+    @show mi3 = Plugins.instantiate([MI1, MI4])
     @test length(mi3) == 3
     @test mi3[1] isa MImpl1
     @test mi3[2] isa MImpl2
     @test mi3[3] isa MImpl4
 
-    mi4 = Plugins.instantiate([MI1, MI4, MI5])
+    @show mi4 = Plugins.instantiate([MI1, MI4, MI5])
     @test length(mi4) == 4
     @test mi4[1] isa MImpl1
     @test mi4[2] isa MImpl2

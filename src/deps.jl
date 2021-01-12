@@ -5,7 +5,7 @@ end
 
 const registry = IdDict{Type,RegisteredPlugin}()
 
-function register(plugin::Type, deps::Vector{<:Type} = Type[])
+function register(plugin::Type, deps::Vector{<:Type} = Type[]) # !?
     registry[plugin] = RegisteredPlugin(plugin, deps)
     return nothing
 end
@@ -21,16 +21,18 @@ function getplugin(t::Type)::RegisteredPlugin
     isnothing(found) && error("No implementing plugin found for $t")
     return deepcopy(found)
 end
-
 getplugin(p::RegisteredPlugin) = p
+
 allplugins() = values(registry)
 plugintypes(plugins) = map(p->p.type, plugins)
 deps(plugins) = unique(Iterators.flatten(map(p->p.deps, plugins)))::Vector{Type}
 findimplementation(req, impls) = findfirst(t -> t <: req, impls)
 
 function missingdeps(plugins, dependencies)
-    _types = plugintypes(dependencies)
-    return filter(p -> isnothing(findimplementation(p, _types)), deps(plugins))
+    deptypes = plugintypes(dependencies)
+    return filter(deps(plugins)) do p
+        isnothing(findimplementation(p, deptypes))
+    end
 end
 
 function find_deps(plugins)
