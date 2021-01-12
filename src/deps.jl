@@ -26,11 +26,11 @@ getplugin(p::RegisteredPlugin) = p
 allplugins() = values(registry)
 plugintypes(plugins) = map(p->p.type, plugins)
 deps(plugins) = unique(Iterators.flatten(map(p->p.deps, plugins)))::Vector{Type}
-getimplementation(req, impls) = findfirst(t -> t <: req, impls)
+findimplementation(req, impls) = findfirst(t -> t <: req, impls)
 
 function missingdeps(plugins, dependencies)
     _types = plugintypes(dependencies)
-    return filter(p -> isnothing(getimplementation(p, _types)), deps(plugins))
+    return filter(p -> isnothing(findimplementation(p, _types)), deps(plugins))
 end
 
 function find_deps(plugins)
@@ -63,5 +63,19 @@ function instantiation_order(plugintypes)
         _removedep(remaining, p)
     end
     return map(p -> p.type, sorted)
+end
+
+function instantiate(plugintypes; options...)
+    order = instantiation_order(plugintypes)
+    instances = []
+    cache = IdDict{Type, Any}()
+    for t in order
+        p = getplugin(t)
+        injected = (get(cache, getplugin(dep).type, nothing) for dep in p.deps)
+        instance = t(injected...; options...)
+        cache[p.type] = instance
+        push!(instances, instance)
+    end
+    return instances
 end
 

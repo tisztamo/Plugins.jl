@@ -281,7 +281,6 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         @test Plugins.shutdown!(app.plugins, app).allok === true
         @test plugin.shutdowncalledwith === app
         notallok = Plugins.shutdown!(app.plugins, 42)
-        @show notallok
         @test notallok.allok === false
         @test (notallok.results[2] isa Tuple) === true
         @test (notallok.results[2][1] isa Exception) === true
