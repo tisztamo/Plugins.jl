@@ -79,7 +79,8 @@ mutable struct PluginStack
     hookfns
     symbolcache::Dict{Symbol, Plugin}
     hookcache::Union{NamedTuple, Nothing}
-    PluginStack(plugins, hookfns = []) = begin
+    PluginStack(plugintypes, hookfns = []; options...) = begin
+        plugins = instantiate(plugintypes; options...)
         stack = new(plugins, hookfns, symbolcache(plugins), nothing)
         rebuild_cache!(stack)
         return stack
@@ -111,13 +112,13 @@ Base.getindex(stack::PluginStack, key::Symbol) = get(stack, key)
 Base.setindex!(stack::PluginStack, args...) = update!(stack, setindex!, args...)
 
 """
-    HookList{TNext, THandler, TPlugin, TSharedState}
+    HookList{TNext, THandler, TPlugin}
 
 Provides fast, inlinable call to the implementations of a specific hook.
 
 You can get a HookList by calling `hooklist()` directly, or using `hooks()`.
 
-The `HookList` can be called with a `::TSharedState` and an arbitrary number of extra arguments. If any of the
+The `HookList` can be called with arbitrary number of extra arguments. If any of the
 plugins referenced in the list fails to handle the extra arguments, the call will raise a `MethodError`
 """
 struct HookList{TNext, THandler, TPlugin}
@@ -273,9 +274,9 @@ Plugins.TemplateStyle(::Type{State}) = CustomTemplate()
 TemplateStyle(::Type) = MutableStruct()
 
 struct FieldSpec
-    name::Symbol
-    type::Type
-    constructor::Union{Function, DataType}
+    name        :: Symbol
+    type        :: Type
+    constructor :: Union{Function, DataType}
 end
 """
     FieldSpec(name, type::Type, constructor::Union{Function, DataType} = type)
@@ -335,7 +336,7 @@ end
 """
     customtype(stack::PluginStack, typename::Symbol, abstract_type::Type, target_module::Module = Main)
 
-Assemble a type with fields provided the plugins in `stack`.
+Assemble a type with fields provided by the plugins in `stack`.
 
 `abstract_type` will be the supertype of the assembled type.
 
@@ -344,6 +345,8 @@ Assemble a type with fields provided the plugins in `stack`.
 Assembling a type `AppStateImpl <: AppState` and parametrizing the app with
 it. 
 ```julia
+abstract type AppState end
+
 mutable struct CustomFieldsApp{TCustomState}
     state::TCustomState
     function CustomFieldsApp(plugins, hookfns, stateargs...)
@@ -362,11 +365,11 @@ end
     (This may provide better performance in a few cases though)
 """
 function customtype(
-    stack::PluginStack,
-    typename::Symbol,
-    abstract_type::Type = Any,
-    params::Vector{Symbol} = Symbol[],
-    target_module::Module = Main
+    stack         :: PluginStack,
+    typename      :: Symbol,
+    abstract_type :: Type = Any,
+    params        :: Vector{Symbol} = Symbol[],
+    target_module :: Module = Main
     )
     hookres = customfields(stack, abstract_type)
     if !hookres.allok

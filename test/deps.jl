@@ -10,9 +10,9 @@ Implementation is marked with subtyping the interface
 struct RootImpl <: RootInterface end
 
 """
-Interfaces have single inheritance with extension semantics:
-An implementation of a subinterface is also the implementation
-of the superinterface.
+Interfaces have single inheritance with subtype semantics:
+An implementation of a subinterface must also implement
+the superinterface.
 """
 abstract type SubInterfaceLeft <: RootInterface end
 struct SubImplLeft <: SubInterfaceLeft end
@@ -36,7 +36,7 @@ struct SubSubImplLeft <: SubSubInterfaceLeft end
     @test Plugins.instantiation_order([RootInterface]) == [RootImpl]
     @test_throws Any Plugins.instantiation_order([SubInterface2])
 
-    # Finds the most specific implementation, if multiple are available
+    # Finds the most specific implementation if multiple are available
     Plugins.register(SubImplLeft)
     @test Plugins.instantiation_order([RootInterface]) == [SubImplLeft]
     @test Plugins.instantiation_order([SubInterfaceLeft]) == [SubImplLeft]
@@ -58,10 +58,10 @@ struct SubSubImplLeft <: SubSubInterfaceLeft end
     @test Plugins.instantiation_order([SubInterfaceRight]) == [SubImplRight]
 end
 
-# For checking permutation equivalence of type arrays, we sort them by type name.
-Base.isless(a::Type, b::Type) = isless(nameof(a), nameof(b))
-
 # ------------------------------------------------------------------------------------------
+
+# Helper for checking permutation equivalence of type arrays
+Base.isless(a::Type, b::Type) = isless(nameof(a), nameof(b))
 
 """
 A more realistic example is a small module structure with complex dependencies.
@@ -95,7 +95,7 @@ struct MImpl5 <: MI5
     MImpl5(::MI4, ::MI2; options...) = new()
 end
 
-@testset "Dependencies are tracked down" begin
+@testset "Dependency hierarchies are tracked" begin
     Plugins.register(MImpl1)
     Plugins.register(MImpl2, [MImpl1])
     Plugins.register(MImpl3, [MI2])
@@ -124,14 +124,14 @@ end
     @show mi3 = Plugins.instantiate([MI1, MI4])
     @test length(mi3) == 3
     @test mi3[1] isa MImpl1
-    @test mi3[2] isa MImpl2
-    @test mi3[3] isa MImpl4
+    @test mi3[2] isa MImpl4
+    @test mi3[3] isa MImpl2
 
     @show mi4 = Plugins.instantiate([MI1, MI4, MI5])
     @test length(mi4) == 4
     @test mi4[1] isa MImpl1
-    @test mi4[2] isa MImpl2
-    @test mi4[3] isa MImpl4
-    @test mi4[4] isa MImpl5
+    @test mi4[2] isa MImpl4
+    @test mi4[3] isa MImpl5
+    @test mi4[4] isa MImpl2
 
 end

@@ -10,18 +10,31 @@ function register(plugin::Type, deps::Vector{<:Type} = Type[]) # !?
     return nothing
 end
 
-function getplugin(t::Type)::RegisteredPlugin
+# t1 implements t2 or
+# t1 is an interface that is more specific than t2, or
+# t1 and t2 are implementations and t1's direct interface
+# is a subinterface of t2's
+function ismorespecific(t1, t2)
+    t1 <: t2 && return true
+    if isconcretetype(t2) && isconcretetype(t2)
+        supertype(t1) <: supertype(t2) && return true
+    end
+    return false
+end
+
+function getplugin(t::Type, throw_on_missing=true)::RegisteredPlugin
     found = get(registry, t, nothing)
     !isnothing(found) && return deepcopy(registry[t])
     for p in values(registry) # find the most specific implementation
-        if p.type <: t && (isnothing(found) || p.type <: found.type )
+        if ismorespecific(p.type, t) && (isnothing(found) || ismorespecific(p.type, found.type))
             found = p
         end
     end
-    isnothing(found) && error("No implementing plugin found for $t")
+    isnothing(found) && throw_on_missing && error("No implementing plugin found for $t")
     return deepcopy(found)
 end
 getplugin(p::RegisteredPlugin) = p
+getplugin(p) = error("The $(typeof(p)) is instantiated. Please provide a type instead!")
 
 allplugins() = values(registry)
 plugintypes(plugins) = map(p->p.type, plugins)
@@ -67,17 +80,33 @@ function instantiation_order(plugintypes)
     return map(p -> p.type, sorted)
 end
 
+# Return a reordered copy of instances to reflect the order of reqplugintypes.
+# instances not represented in plugintypes will go to the end of the
+# returned vector in their original order
+function order_instances(instances, plugintypes)
+    cache = Dict([typeof(instance) => instance for instance in instances])
+    result = []
+    for t in plugintypes
+        instance = pop!(cache, getplugin(t, false).type)
+        push!(result, instance)
+    end
+    for instance in values(cache)
+        push!(result, instance)
+    end
+    return result
+end
+
 function instantiate(plugintypes; options...)
     order = instantiation_order(plugintypes)
     instances = []
     cache = IdDict{Type, Any}()
     for t in order
         p = getplugin(t)
-        injected = (get(cache, getplugin(dep).type, nothing) for dep in p.deps)
-        instance = t(injected...; options...)
+        injected_deps = (get(cache, getplugin(dep).type, nothing) for dep in p.deps)
+        instance = t(injected_deps...; options...)
         cache[p.type] = instance
         push!(instances, instance)
     end
-    return instances
+    return order_instances(instances, plugintypes)
 end
 

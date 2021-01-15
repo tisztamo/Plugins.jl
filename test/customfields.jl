@@ -8,7 +8,9 @@ abstract type AbstractState2 end
 abstract type AbstractState3 end
 
 struct Fielder1 <: Plugin end
+Plugins.register(Fielder1)
 struct Fielder2 <: Plugin end
+Plugins.register(Fielder2)
 
 _numberinit() =  0
 _numberinit(p) = p
@@ -68,7 +70,7 @@ end
 @testset "Plugins.jl custom fields" begin
     @test isnothing(Plugins.customfield(Fielder1(), AbstractArray)) == true
 
-    stack = PluginStack([Fielder1(), Fielder2()])
+    stack = PluginStack([Fielder1, Fielder2])
     res1 = Plugins.customfields(stack, AbstractState1)
     @test res1.allok == true
     @test res1.results[1] == Plugins.FieldSpec(:field1_1, Int64, _numberinit)
@@ -110,7 +112,7 @@ end
 
     @test_throws Exception customtype(stack, :State2, AbstractState3)
 
-    app = CustomFieldsApp([Fielder1(), Fielder2()], [], 0, 0.0)
+    app = CustomFieldsApp([Fielder1, Fielder2], [], 0, 0.0)
     @test app.state.field1 === 0
     @test app.state.field2 === 0.0
     app.state.field1 = 43
