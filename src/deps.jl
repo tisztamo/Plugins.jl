@@ -13,11 +13,14 @@ end
 # t1 implements t2 or
 # t1 is an interface that is more specific than t2, or
 # t1 and t2 are implementations and t1's direct interface
-# is a subinterface of t2's
+# is a real subinterface of t2's
 function ismorespecific(t1, t2)
     t1 <: t2 && return true
-    if isconcretetype(t2) && isconcretetype(t2)
-        supertype(t1) <: supertype(t2) && return true
+    if isconcretetype(t2) && isconcretetype(t2) &&
+        supertype(t1) != supertype(t2) &&
+        supertype(t2) != Plugin &&
+        supertype(t1) <: supertype(t2)
+        return true
     end
     return false
 end
