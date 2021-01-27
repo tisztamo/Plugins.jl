@@ -68,39 +68,41 @@ A more realistic example is a small module structure with complex dependencies.
 Instantiated implementations receive instances of their dependencies as arguments
 to the constructor, and may also receive options through kwargs.
 """
-abstract type MI1 end
+abstract type MI1 <: Plugin  end
 struct MImpl1 <: MI1
     x1
     x2
     MImpl1(; x1=nothing, x2=nothing, options...) = new(x1, x2)
 end
 
-abstract type MI2 end
+abstract type MI2 <: Plugin  end
 struct MImpl2 <: MI2
     MImpl2(::MI1; options...) = new()
 end
+Plugins.deps(::Type{MImpl2}) = [MImpl1]
 
-abstract type MI3 end
+abstract type MI3 <: Plugin  end
 struct MImpl3 <: MI3
     MImpl3(::MI1; options...) = new()
 end
 
-abstract type MI4 end
+abstract type MI4 <: Plugin  end
 struct MImpl4 <: MI4
     MImpl4(::MI1, ::MI2; options...) = new()
 end
 
-abstract type MI5 end
+abstract type MI5 <: Plugin end
 struct MImpl5 <: MI5
     MImpl5(::MI4, ::MI2; options...) = new()
 end
+Plugins.deps(::Type{MImpl5}) = [MImpl4, MI2]
 
 @testset "Dependency hierarchies are tracked" begin
     Plugins.register(MImpl1)
-    Plugins.register(MImpl2, [MImpl1])
+    Plugins.register(MImpl2)
     Plugins.register(MImpl3, [MI2])
     Plugins.register(MImpl4, [MI1, MI2])
-    Plugins.register(MImpl5, [MImpl4, MI2])
+    Plugins.autoregister() # MImpl5
     @test sort(Plugins.instantiation_order([MI1, MI2])) == sort([MImpl1, MImpl2])
     @test sort(Plugins.instantiation_order([MI1, MI3])) == sort([MImpl1, MImpl2, MImpl3])
     @test sort(Plugins.instantiation_order([MImpl3, MImpl1])) == sort([MImpl1, MImpl2, MImpl3])

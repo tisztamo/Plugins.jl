@@ -1,13 +1,30 @@
+using InteractiveUtils
+
 struct RegisteredPlugin
     type::Type
-    deps::Vector{Type}
+    deps::Vector{<:Type}
 end
 
 const registry = IdDict{Type,RegisteredPlugin}()
 
-function register(plugin::Type, deps::Vector{<:Type} = Type[]) # !?
-    registry[plugin] = RegisteredPlugin(plugin, deps)
+function register(plugin::Type, dependencies = deps(plugin))
+    registry[plugin] = RegisteredPlugin(plugin, dependencies)
     return nothing
+end
+
+deps(t) = Type[]
+
+function autoregister(base=Plugin)
+    for t in subtypes(base) # TODO subtypes is extremely slow
+        if isconcretetype(t)
+            if !haskey(registry, t)
+                @debug "Auto-registering plugin type $t"
+                register(t)
+            end
+        else
+            autoregister(t)
+        end
+    end
 end
 
 # t1 implements t2 or
@@ -41,12 +58,12 @@ getplugin(p) = error("The $(typeof(p)) is instantiated. Please provide a type in
 
 allplugins() = values(registry)
 plugintypes(plugins) = map(p->p.type, plugins)
-deps(plugins) = unique(Iterators.flatten(map(p->p.deps, plugins)))::Vector{Type}
+plugindeps(plugins) = unique(Iterators.flatten(map(p->p.deps, plugins)))
 findimplementation(req, impls) = findfirst(t -> t <: req, impls)
 
 function missingdeps(plugins, dependencies)
     deptypes = plugintypes(dependencies)
-    return filter(deps(plugins)) do p
+    return filter(plugindeps(plugins)) do p
         isnothing(findimplementation(p, deptypes))
     end
 end
