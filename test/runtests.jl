@@ -18,4 +18,4 @@ end
 
 addtests("basics.jl")
 addtests("deps.jl")
-addtests("customfields.jl")
+addtests("assembled_types.jl")

@@ -32,11 +32,11 @@ Plugins.TemplateStyle(::Type{AppState}) = CustomTemplate()
 
 Plugins.typedef(::CustomTemplate, spec) = quote
     evaltest = true
-    mutable struct $(spec.name) <: $(spec.parent_type)
+    mutable struct TYPE_NAME <: $(spec.parent_type)
         $(Plugins.structfields(spec))
     end;
     $(Plugins.default_constructor(spec))
-    $(spec.name)
+    TYPE_NAME
 end
 
 Plugins.customfield(plugin::Fielder1, ::Type{AppState}) = Plugins.FieldSpec("field1", Int64, _numberinit)
@@ -64,7 +64,7 @@ Plugins.TemplateStyle(::Type{ErrState}) = ErrTemplate()
 Plugins.typedef(::ErrTemplate, spec) = quote
     evaltest = true
     dfgdfg
-    $(spec.name)
+    TYPE_NAME
 end
 
 @testset "Plugins.jl custom fields" begin
@@ -80,7 +80,7 @@ end
     @test res2.results[1] == Plugins.FieldSpec(:field1_2, Any, _any)
     @test res2.results[2] == Plugins.FieldSpec(:field2_2, Fielder2)
 
-    s1 = customtype(stack, :State1, AbstractState1)
+    s1 = customtype(stack, :State1, AbstractState1; unique_name=false)
     @test s1 === State1
     s1i = State1(0, Dict())
     @test s1i.field1_1 == 0
@@ -101,14 +101,23 @@ end
     @test s1i3.field2_1["42"] == 42
 
     s2 = customtype(stack, :State2, AbstractState2)
-    @test s2 === State2
-    s2i = State2(0, Fielder2())
+    s2i = s2(0, Fielder2())
     @test s2i.field1_2 == 0
     @test s2i.field2_2 isa Fielder2
 
-    s2i2 = State2()
+    s2i2 = s2()
     @test isnothing(s2i2.field1_2)
     @test s2i.field2_2 isa Fielder2
+
+    # Same params yield to same type
+    s2_1 = customtype(stack, :State2, AbstractState2)
+    @test s2_1 == s2
+    @test length(string(s2_1)) > length(string(:State2))
+    
+    # different params lead to different types
+    s2_2 = customtype(stack, :State2, AbstractState1)
+    @test s2_2 != s2_1
+    @test length(string(s2_2)) > length(string(:State2))
 
     @test_throws Exception customtype(stack, :State2, AbstractState3)
 
@@ -130,8 +139,8 @@ end
 
     # Parametetric type
     st1 = customtype(stack, :StateT1, AbstractState1, [:T1])
-    @test typeof(StateT1) === UnionAll
-    st1i = StateT1{Int}(0, Dict())
+    @test typeof(st1) === UnionAll
+    st1i = st1{Int}(0, Dict())
     @test st1i.field1_1 == 0
     @test_throws Exception st1i.field1_1 = 43
     @test st1i.field2_1 isa Dict
