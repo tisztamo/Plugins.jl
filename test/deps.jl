@@ -136,4 +136,5 @@ end
     @test mi4[3] isa MImpl5
     @test mi4[4] isa MImpl2
 
+    @test_throws ErrorException Plugins.getplugin(42)
 end
