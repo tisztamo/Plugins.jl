@@ -378,7 +378,12 @@ function customtype(
     fields = filter(f -> !isnothing(f), hookres.results)
     spec = TypeSpec(typename, abstract_type, fields, params, target_module)
     def = typedef(TemplateStyle(abstract_type), spec)
-    return Base.eval(target_module, def)
+    try
+        retval = Base.eval(target_module, def)
+    catch e
+        @info "Exception while evaluating custom type: $def"
+        rethrow(e)
+    end
 end
 
 include("deps.jl")
