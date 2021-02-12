@@ -208,7 +208,7 @@ end
 hook_cache(stack::PluginStack) = hook_cache(stack.plugins, stack.hookfns)
 
 function create_lifecyclehook(op::Function)
-    return (stack::PluginStack, data...) -> begin
+    return (stack::PluginStack, data...) -> begin # TODO We loose the name of op, which may be needed for error reporting
         allok = true
         results = []
         for plugin in reverse(stack.plugins)
