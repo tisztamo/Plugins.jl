@@ -163,7 +163,7 @@ end
 
 function inject_name(typedef::Expr, spec::TypeSpec, unique_name)
     suffix = unique_name ? hashstring(typedef) : ""
-    name = Symbol(string(spec.name) * suffix)
+    name = Symbol(string(spec.name) * "_" * suffix)
     recursive_replace!(typedef, :TYPE_NAME => name)
 end
 

@@ -2,9 +2,10 @@
 
 ## Plugins.jl highlights
 
-- Helps implementing the popular "extensions" architectural pattern.
+- Shapes your code by helping to implement the popular "extensions" architectural pattern.
 - Zero Cost Abstraction: Plugin code is inlinable. You've read it right: *inlinable*.
 - Allows maintainable metaprogramming in a controlled way that prevents meta code from taking over your codebase.
+- Defines a standard plugin lifecycle and provides dependency management/injection.
 
 ## What plugins are in general?
 
