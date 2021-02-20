@@ -24,23 +24,23 @@ abstract type SubSubInterfaceLeft <: SubInterfaceLeft end
 struct SubSubImplLeft <: SubSubInterfaceLeft end
 
 @testset "Finding implementations for single interfaces" begin
-    # Throws an error when the required interface or any of its dependencies
-    # is unimplemented
+    # Throws an error when the required interface is unimplemented
     @test_throws Any Plugins.instantiation_order([RootInterface])
-    @test_throws Any Plugins.instantiation_order([SubInterface2])
+    @test_throws Any Plugins.instantiation_order([SubInterfaceLeft])
 
     # Registration is programmatic for now
     Plugins.register(RootImpl)
 
     # Finds the trivial implementation
     @test Plugins.instantiation_order([RootInterface]) == [RootImpl]
-    @test_throws Any Plugins.instantiation_order([SubInterface2])
+
+    # Throws an error when the required interface has unimplemented dependencies
+    @test_throws Any Plugins.instantiation_order([SubInterfaceLeft])
 
     # Finds the most specific implementation if multiple are available
     Plugins.register(SubImplLeft)
     @test Plugins.instantiation_order([RootInterface]) == [SubImplLeft]
     @test Plugins.instantiation_order([SubInterfaceLeft]) == [SubImplLeft]
-    @test_throws Any Plugins.instantiation_order([SubInterface2])
 
     # If there are multiple most specific implementations, selects one undefinedly
     Plugins.register(SubImplRight)
