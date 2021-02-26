@@ -12,8 +12,31 @@ function register(plugin::Type, dependencies = deps(plugin))
     return nothing
 end
 
+"""
+    Plugins.deps(::Type{T}) = Type[] # where T is your plugin type
+
+Add a method to declare your dependencies.
+
+The plugin type must have a constructor accepting an instance of every of their dependencies.
+
+# Examples
+
+abstract type InterfaceLeft end
+struct ImplLeft <: InterfaceLeft end
+
+abstract type InterfaceRight end
+struct ImplRight <: InterfaceRight end
+
+Plugins.deps(::Type{ImplLeft}) = [ImplRight]
+"""
 deps(t) = Type[]
 
+
+"""
+    function autoregister(base=Plugin)
+
+Find and register every concrete subtype of 'base' as a Plugin
+"""
 function autoregister(base=Plugin)
     for t in subtypes(base) # TODO subtypes is extremely slow
         if isconcretetype(t)
