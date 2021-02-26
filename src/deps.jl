@@ -100,15 +100,17 @@ function instantiation_order(plugintypes)
     return map(p -> p.type, sorted)
 end
 
-# Return a reordered copy of instances to reflect the order of reqplugintypes.
-# instances not represented in plugintypes will go to the end of the
-# returned vector in their original order
+# Return a reordered copy of instances to reflect the order of plugintypes.
+# Instances not represented in plugintypes will go to the end of the
+# returned vector in their original order.
+# Instances that are represented several times in plugintypes 
+# will appear at the place determined by the first representation
 function order_instances(instances, plugintypes)
     cache = Dict([typeof(instance) => instance for instance in instances])
     result = []
     for t in plugintypes
-        instance = pop!(cache, getplugin(t, false).type)
-        push!(result, instance)
+        instance = pop!(cache, getplugin(t, false).type, nothing)
+        !isnothing(instance) && push!(result, instance)
     end
     for instance in values(cache)
         push!(result, instance)
