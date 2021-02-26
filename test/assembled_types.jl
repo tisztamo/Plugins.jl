@@ -81,19 +81,19 @@ end
     @test res2.results[2] == Plugins.FieldSpec(:field2_2, Fielder2)
 
     s1 = customtype(stack, :State1, AbstractState1; unique_name=false)
-    @test s1 === State1
-    s1i = State1(0, Dict())
+    @test startswith(string(s1), "State1") == true
+    s1i = s1(0, Dict())
     @test s1i.field1_1 == 0
     @test_throws Exception s1i.field1_1 = 43
     @test s1i.field2_1 isa Dict
 
-    s1i2 = State1()
+    s1i2 = s1()
     @test s1i2.field1_1 == 0
     @test_throws Exception s1i2.field1_1 = 43
     @test s1i2.field2_1 isa Dict
     @test length(s1i2.field2_1) == 0
 
-    s1i3 = State1(42)
+    s1i3 = s1(42)
     @test s1i3.field1_1 == 42
     @test_throws Exception s1i3.field1_1 = 43
     @test s1i3.field2_1 isa Dict
@@ -131,8 +131,8 @@ end
     testinjected(app, 43, 43.0)
     @test app.state.field1 === 43
 
-    @test State1().field1_1 == 0
-    @test State1().field2_1 isa Dict{String, Any}
+    @test s1().field1_1 == 0
+    @test s1().field2_1 isa Dict{String, Any}
 
     errstack = PluginStack([])
     @test_throws Exception customtype(errstack, :ErrState2, ErrState)
