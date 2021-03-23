@@ -74,7 +74,7 @@ end
 function tickerop_kern(app::App, tickhook)
     for i = 1:1e6
         app.tick_counter += 1
-        tickhook(app) # Fo simplicity we give the whole app to plugins as 'shared state'
+        tickhook(app) # We can pass shared state to plugins on the hook. Here, for simplicity, the whole app.
     end
 end;
 
