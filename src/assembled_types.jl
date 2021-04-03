@@ -1,4 +1,3 @@
-
 abstract type TemplateStyle end
 
 """
