@@ -1,7 +1,7 @@
 """
     symbol(plugin)
 
-Return the per-PluginStack unique Symbol of this plugin if it exports an API to other plugins.
+Return the per-PluginStack unique Symbol of this plugin if it exports a "late-bind" runtime API to other plugins.
 """
 symbol(plugin::Plugin) = :nothing
 
