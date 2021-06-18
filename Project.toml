@@ -1,7 +1,7 @@
 name = "Plugins"
 uuid = "231a7ae5-8495-40ed-9891-ff920a14b9bd"
 authors = ["Krisztián Schaffer"]
-version = "0.5.1"
+version = "0.5.2"
 
 [deps]
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
