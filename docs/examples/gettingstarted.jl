@@ -25,6 +25,7 @@ mutable struct CounterPlugin <: Plugin
 end
 
 Plugins.symbol(::CounterPlugin) = :counter # For access from the outside / from other plugins
+Plugins.register(CounterPlugin)
 
 function tick(me::CounterPlugin, app)
     me.count += 1
@@ -39,6 +40,8 @@ mutable struct PerfPlugin <: Plugin
 end
 
 Plugins.symbol(::PerfPlugin) = :perf
+Plugins.register(PerfPlugin)
+
 
 tickfreq(me::PerfPlugin) = 1e9 / me.avg_elapsed;
 
@@ -82,7 +85,7 @@ end;
 
 # The last step is to initialize the app, call the operation, and read out the performance measurement from the plugins:
 
-app = App([CounterPlugin(), PerfPlugin()], [tick])
+app = App([CounterPlugin, PerfPlugin], [tick])
 tickerop(app)
 
 @test app.plugins[:counter].count == app.tick_counter
