@@ -23,4 +23,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/tisztamo/Plugins.jl",
+    devbranch = "main"
 )
