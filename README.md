@@ -2,7 +2,7 @@
 
 ### Plain Old Callbacks in new Cloak.
 
-[![Build Status](https://travis-ci.com/tisztamo/Plugins.jl.svg?branch=master)](https://travis-ci.com/tisztamo/Plugins.jl)
+[![CI](https://github.com/tisztamo/Plugins.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tisztamo/Plugins.jl/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
 ![experimental](https://img.shields.io/badge/lifecycle-experimental-blue.svg)
 
