@@ -10,7 +10,8 @@ makedocs(;
     ),
     pages=[
         "index.md",
-        "gettingstarted.md",
+        "tutorial.md",
+        "features.md",
         "guide.md",
         "repo.md",
         "reference.md",
