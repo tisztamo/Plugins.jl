@@ -281,6 +281,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
 
         # Create a non-standard lifecycle hook
         lifecycle_hook = Plugins.create_lifecyclehook(deferred_init)
+        @test string(lifecycle_hook) == "deferred_init"
         @test lifecycle_hook(app.plugins, "42").allok === true
         @test plugin.deferredinitcalledwith === "42"
 

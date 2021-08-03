@@ -94,18 +94,28 @@ function hook_cache(plugins, hookfns)
 end
 hook_cache(stack::PluginStack) = hook_cache(stack.plugins, stack.hookfns)
 
-function create_lifecyclehook(op::Function)
-    return (stack::PluginStack, data...) -> begin # TODO We loose the name of op, which may be needed for error reporting
-        allok = true
-        results = []
-        for plugin in reverse(stack.plugins)
-            try
-                pushfirst!(results, op(plugin, data...))
-            catch e
-                allok = false
-                pushfirst!(results, (e, catch_backtrace()))
-            end
+struct LifecycleHook
+    op::Function
+end
+
+Base.string(lfhook::LifecycleHook) = string(lfhook.op)
+
+function (lfhook::LifecycleHook)(stack::PluginStack, data...)
+    allok = true
+    results = []
+    for plugin in reverse(stack.plugins)
+        try
+            @debug "Calling $(string(lfhook)) of $(typeof(plugin))"
+            pushfirst!(results, lfhook.op(plugin, data...))
+        catch e
+            allok = false
+            @debug "Got error $(e) from $(string(lfhook)) of $(typeof(plugin))"
+            pushfirst!(results, (e, catch_backtrace()))
         end
-        return (allok = allok, results = results)
     end
+    return (allok = allok, results = results)
+end
+
+function create_lifecyclehook(op::Function)
+    return LifecycleHook(op)
 end
