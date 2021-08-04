@@ -105,11 +105,11 @@ function (lfhook::LifecycleHook)(stack::PluginStack, data...)
     results = []
     for plugin in reverse(stack.plugins)
         try
-            @debug "Calling $(string(lfhook)) of $(typeof(plugin))"
+            @debug "Calling $(string(lfhook)) lifecycle hook of $(typeof(plugin))"
             pushfirst!(results, lfhook.op(plugin, data...))
         catch e
             allok = false
-            @debug "Got error $(e) from $(string(lfhook)) of $(typeof(plugin))"
+            @debug "Got error $(e) from $(string(lfhook)) lifecycle hook of $(typeof(plugin))"
             pushfirst!(results, (e, catch_backtrace()))
         end
     end
