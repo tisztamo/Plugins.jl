@@ -155,7 +155,7 @@ function customtype(
     try
         retval = Base.eval(target_module, def)
     catch e
-        @info "Exception while evaluating custom type: $def"
+        @info "Exception while assembling custom type: $def"
         rethrow(e)
     end
 end
