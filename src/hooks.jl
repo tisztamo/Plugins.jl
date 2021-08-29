@@ -14,7 +14,7 @@ struct HookList{TNext, THandler, TPlugin}
     plugin::TPlugin
 end
 
-HookListTerminal = HookList{Nothing, Nothing, Nothing}
+struct HookListTerminal end
 
 @inline function (hook::HookList)(args...)::Bool
     if hook.handler(hook.plugin, args...) !== true
@@ -43,7 +43,7 @@ that matches the following signature: `hookfn(::TPlugin, ...)`
 """
 function hooklist(plugins, hookfn)
     if length(plugins) == 0
-        return HookListTerminal(nothing, nothing, nothing)
+        return HookListTerminal()
     end
     plugin = plugins[1]
     if length(methods(hookfn, (typeof(plugin), Vararg{Any}))) > 0
