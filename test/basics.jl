@@ -69,6 +69,7 @@ checkconfig_handler(plugin::ConfigurablePlugin, framework, event) = begin
     if event.config !== plugin.config
         throw("Not the same!")
     end
+    return plugin.config
 end
 
 struct PropagationStopperPlugin <: Plugin
@@ -193,6 +194,7 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
     @testset "Unhandled hook returns false" begin
         app = Framework([EmptyPlugin{1}])
         @test hooklist(app.plugins, hook1)() == false
+        @test call_optional(hooklist(app.plugins, hook1)) == nothing
     end
 
     @testset "Framework goes through" begin
@@ -217,8 +219,10 @@ deferred_init(plugin::LifeCycleTestPlugin, data) = plugin.deferredinitcalledwith
         event2 = (config = app2config,)
         hooklist(app1.plugins, checkconfig_handler)(app1, event1)
         @test_throws String hooklist(app1.plugins, checkconfig_handler)(app1, event2)
+        @test call_optional(hooklist(app1.plugins, checkconfig_handler), app1, event1) == event1.config
         hooklist(app2.plugins, checkconfig_handler)(app2, event2)
         @test_throws String hooklist(app2.plugins, checkconfig_handler)(app2, event1)
+        @test call_optional(hooklist(app2.plugins, checkconfig_handler), app2, event2) == event2.config
     end
 
     @testset "Stopping Propagation" begin

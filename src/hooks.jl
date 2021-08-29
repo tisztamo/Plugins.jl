@@ -23,7 +23,18 @@ struct HookListTerminal end
     return true
 end
 
-(hook::HookListTerminal)(::Vararg{Any}) = false
+(hook::HookListTerminal)(_...) = false
+
+@inline function call_optional(hook::Plugins.HookList, args...)
+    if !isnothing(hook.handler)
+        val = hook.handler(hook.plugin, args...)
+        if !isnothing(val)
+            return val
+        end
+    end
+    return call_optional(hook.next, args...)
+end
+call_optional(hook::HookListTerminal, _...) = nothing
 
 length(l::HookListTerminal) = 0
 length(l::HookList) = 1 + length(l.next)

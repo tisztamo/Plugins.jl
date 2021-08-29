@@ -4,6 +4,7 @@ import Base.length, Base.iterate, Base.get, Base.getindex
 
 export PluginStack, Plugin,
     hooks, hooklist, hook_cache,
+    call_optional,
     customtype
 
 """
