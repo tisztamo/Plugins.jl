@@ -7,6 +7,8 @@
 ![experimental](https://img.shields.io/badge/lifecycle-experimental-blue.svg)
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://tisztamo.github.io/Plugins.jl/dev)
+[![DOI](https://proceedings.juliacon.org/papers/10.21105/jcon.00098/status.svg)](https://doi.org/10.21105/jcon.00098)
+
 
 # Introduction
 
