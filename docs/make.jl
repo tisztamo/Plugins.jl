@@ -16,12 +16,12 @@ makedocs(;
         "repo.md",
         "reference.md",
     ],
-    repo="https://github.com/tisztamo/Plugins.jl/blob/{commit}{path}#L{line}",
+    repo = GitHub("tisztamo", "Plugins.jl"),
     sitename="Plugins.jl",
     authors="Krisztián Schaffer"
 )
 
 deploydocs(;
-    repo="github.com/tisztamo/Plugins.jl",
+    repo = GitHub("tisztamo", "Plugins.jl"),
     devbranch = "main"
 )
