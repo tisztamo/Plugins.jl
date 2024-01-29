@@ -18,8 +18,7 @@ makedocs(;
     ],
     repo="https://github.com/tisztamo/Plugins.jl/blob/{commit}{path}#L{line}",
     sitename="Plugins.jl",
-    authors="Krisztián Schaffer",
-    assets=String[],
+    authors="Krisztián Schaffer"
 )
 
 deploydocs(;
