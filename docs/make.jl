@@ -1,4 +1,4 @@
-using Literate, Documenter, Plugins
+using Literate, Documenter, Documenter.Remotes, Plugins
 
 # Generating to docs/src, was unable to load pages from a different directory
 Literate.markdown("docs/examples/gettingstarted.jl", "docs/src/"; documenter = true)
@@ -16,7 +16,7 @@ makedocs(;
         "repo.md",
         "reference.md",
     ],
-    repo = GitHub("tisztamo", "Plugins.jl"),
+    repo = Documenter.Remotes.GitHub("tisztamo", "Plugins.jl"),
     sitename="Plugins.jl",
     authors="Krisztián Schaffer"
 )
