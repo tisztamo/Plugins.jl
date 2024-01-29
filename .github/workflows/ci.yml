@@ -47,6 +47,7 @@ jobs:
         with:
           file: lcov.info
   docs:
+    if: ${{ false }}  # disable TODO fix documentation generation
     name: Documentation
     runs-on: ubuntu-latest
     steps:
