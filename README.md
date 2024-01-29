@@ -1,6 +1,6 @@
 # Plugins
 
-### Plain Old Callbacks in new Cloak.
+### An extension system for Julia 
 
 [![CI](https://github.com/tisztamo/Plugins.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tisztamo/Plugins.jl/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
