@@ -3,7 +3,7 @@
 ### An extension system for Julia 
 
 [![CI](https://github.com/tisztamo/Plugins.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/tisztamo/Plugins.jl/actions/workflows/ci.yml)
-[![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
+[![Codecov](https://codecov.io/gh/tisztamo/Plugins.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/tisztamo/Plugins.jl)
 ![experimental](https://img.shields.io/badge/lifecycle-experimental-blue.svg)
 
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://tisztamo.github.io/Plugins.jl/dev)
